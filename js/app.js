@@ -62,12 +62,10 @@ async function muatPengaturanGlobal() {
 }
 
 function applyGlobalSettings() {
-  // 1. Terapkan Tema
   document.body.classList.toggle('light-mode', globalSettings.theme === 'light');
   const toggleTheme = document.getElementById('toggleTheme');
   if(toggleTheme) toggleTheme.checked = (globalSettings.theme === 'light');
 
-  // 2. Terapkan Musik
   const bgMusic = document.getElementById('bgMusic');
   const btnMusic = document.getElementById('btnMusic');
   
@@ -78,10 +76,8 @@ function applyGlobalSettings() {
     const inputMusik = document.getElementById('inputMusicUrl');
     if(inputMusik) inputMusik.value = globalSettings.musicUrl;
 
-    // Tampilkan tombol musik ke semua orang
     if(btnMusic) btnMusic.style.display = 'flex';
 
-    // Autoplay trick (browser memblokir suara sebelum user klik)
     const playOnInteraction = () => {
       bgMusic.play().then(() => {
         if(btnMusic) btnMusic.textContent = '⏸️';
@@ -97,14 +93,12 @@ function applyGlobalSettings() {
 async function simpanPengaturanGlobal(theme, musicUrl, apiKey) {
   const { doc, setDoc } = window.firebaseFuncs;
   
-  // Pastikan user beneran login sebelum mencoba nulis ke database
   if (!window.firebaseAuth.currentUser) {
     alert("Gagal menyimpan: Anda harus login sebagai Admin terlebih dahulu.");
     return;
   }
 
   try {
-    // Proses simpan ditunggu (await) sampai server Firebase konfirmasi sukses
     await setDoc(doc(window.firebaseDB, "pengaturan", "global"), {
       theme: theme,
       musicUrl: musicUrl
@@ -112,7 +106,6 @@ async function simpanPengaturanGlobal(theme, musicUrl, apiKey) {
 
     localStorage.setItem('openai_key', apiKey); 
 
-    // Update state lokal agar langsung berubah tanpa refresh
     globalSettings.theme = theme;
     globalSettings.musicUrl = musicUrl;
     applyGlobalSettings();
@@ -126,10 +119,9 @@ async function simpanPengaturanGlobal(theme, musicUrl, apiKey) {
 }
 
 /* =========================================================
-   UTILITAS & RENDER UTAMA
+   UTILITAS & RENDER
    ========================================================= */
 function getChar(id) { return characters.find(c => c.id === id); }
-
 function filterList(arr) {
   if (!query) return arr;
   const keys = ['nama','gelar','ras','kategori','gender','usia','asal','afiliasi','status','kelas','deskripsi','kepribadian','latar','kemampuan','kelemahan'];
@@ -147,7 +139,6 @@ function renderAvatar(c) {
 function render() {
   if (currentId && !getChar(currentId)) currentId = null;
   
-  // Atur Visibilitas Elemen Navigasi
   const adminElements = ['btnAdd', 'navAdmin', 'btnChatAI'];
   adminElements.forEach(id => {
     const el = document.getElementById(id);
@@ -159,14 +150,9 @@ function render() {
 
   renderSidebar();
 
-  if (currentView === 'admin' && isAdmin) {
-    renderAdminDashboard();
-  } else if (currentId && currentView === 'article') {
-    renderChar(getChar(currentId));
-  } else { 
-    currentView = 'home'; 
-    renderHome(); 
-  }
+  if (currentView === 'admin' && isAdmin) renderAdminDashboard();
+  else if (currentId && currentView === 'article') renderChar(getChar(currentId));
+  else { currentView = 'home'; renderHome(); }
 }
 
 function renderSidebar() {
@@ -188,13 +174,8 @@ function renderHome() {
       <p>Arsip hidup tentang benua, ras, karakter, dan segala yang ada di antaranya.</p>
       ${isAdmin ? `<button class="btn btn-primary" id="homeAdd">＋ Tambah Entri Baru</button>` : ``}
     </div>
-    <div class="section-head">
-      <h2>Daftar Entri</h2>
-      <span class="count">${list.length} entri</span>
-    </div>
-    ${list.length
-      ? `<div class="card-grid">${list.map(cardHTML).join('')}</div>`
-      : `<div class="empty-state">Codex ini masih kosong.</div>`}
+    <div class="section-head"><h2>Daftar Entri</h2><span class="count">${list.length} entri</span></div>
+    ${list.length ? `<div class="card-grid">${list.map(cardHTML).join('')}</div>` : `<div class="empty-state">Codex ini masih kosong.</div>`}
   `;
 }
 
@@ -214,37 +195,23 @@ function renderAdminDashboard() {
   const totalFoto = characters.filter(c => c.foto).length;
   mainEl.innerHTML = `
     <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom: 20px;">
-      <div>
-        <h1 class="page-title" style="border:none; margin:0;">Panel Admin</h1>
-        <div class="page-sub" style="margin:0;">Selamat datang, Administrator.</div>
-      </div>
+      <div><h1 class="page-title" style="border:none; margin:0;">Panel Admin</h1><div class="page-sub" style="margin:0;">Selamat datang, Administrator.</div></div>
       <button class="btn btn-outline" id="openSettingsBtn">⚙️ Pengaturan Web</button>
     </div>
-
     <div class="card-grid" style="margin-bottom: 30px;">
       <div class="card" style="cursor:default; border-left: 3px solid var(--accent-gold);"><div class="card-body"><div class="card-meta">Total Entri</div><h3 style="font-size:28px; margin:0;">${characters.length}</h3></div></div>
       <div class="card" style="cursor:default; border-left: 3px solid var(--accent-brown);"><div class="card-body"><div class="card-meta">Entri dengan Foto</div><h3 style="font-size:28px; margin:0;">${totalFoto}</h3></div></div>
     </div>
-
-    <div class="section-head">
-      <h2>Kelola Entri</h2>
-      <button class="btn btn-primary btn-sm" id="adminAddBtn" style="margin-left:auto;">+ Tambah Baru</button>
-    </div>
-
+    <div class="section-head"><h2>Kelola Entri</h2><button class="btn btn-primary btn-sm" id="adminAddBtn" style="margin-left:auto;">+ Tambah Baru</button></div>
     <div style="background: var(--bg-darker); border: 1px solid var(--border-color); border-radius: 4px; overflow-x: auto;">
       <table style="width: 100%; border-collapse: collapse; text-align: left;">
         <thead><tr style="background: var(--bg-dark); border-bottom: 1px solid var(--border-color);">
-          <th style="padding: 12px; font-family: 'Cinzel';">Nama</th>
-          <th style="padding: 12px; font-family: 'Cinzel';">Kategori</th>
-          <th style="padding: 12px; font-family: 'Cinzel'; text-align:right;">Aksi</th>
+          <th style="padding: 12px; font-family: 'Cinzel';">Nama</th><th style="padding: 12px; font-family: 'Cinzel';">Kategori</th><th style="padding: 12px; font-family: 'Cinzel'; text-align:right;">Aksi</th>
         </tr></thead>
         <tbody>
           ${characters.length ? characters.map(c => `
             <tr style="border-bottom: 1px solid var(--border-color);">
-              <td style="padding: 12px; display:flex; align-items:center; gap:10px;">
-                <div style="width:30px; height:30px; border-radius:4px; overflow:hidden; display:flex; align-items:center; justify-content:center; background:var(--bg-dark);">${renderAvatar(c)}</div>
-                <strong>${esc(c.nama)}</strong>
-              </td>
+              <td style="padding: 12px; display:flex; align-items:center; gap:10px;"><div style="width:30px; height:30px; border-radius:4px; overflow:hidden; display:flex; align-items:center; justify-content:center; background:var(--bg-dark);">${renderAvatar(c)}</div><strong>${esc(c.nama)}</strong></td>
               <td style="padding: 12px; color: var(--text-muted);">${esc(c.kategori || '-')}</td>
               <td style="padding: 12px; text-align:right;">
                 <button class="btn btn-sm btn-outline" data-edit="${c.id}">✏️</button>
@@ -270,9 +237,7 @@ function renderChar(c) {
   ].map(([title, val]) => [title, tambahWatermark(val)]);
 
   const bodyHTML = sections.map(([title, val]) => {
-    const isi = (val && String(val).trim())
-      ? String(val).trim().split(/\n+/).filter(Boolean).map(p => `<p>${esc(p)}</p>`).join('')
-      : `<p class="empty">Belum ada informasi.</p>`;
+    const isi = (val && String(val).trim()) ? String(val).trim().split(/\n+/).filter(Boolean).map(p => `<p>${esc(p)}</p>`).join('') : `<p class="empty">Belum ada informasi.</p>`;
     return `<section class="sec" id="sec-${slug(title)}"><h2>${title}</h2>${isi}</section>`;
   }).join('');
 
@@ -281,10 +246,7 @@ function renderChar(c) {
   mainEl.innerHTML = `
     <div class="page-tabs">
       <span class="tab active">Artikel</span>
-      ${isAdmin ? `<div class="tab-actions">
-        <button class="btn btn-sm btn-outline" data-edit="${c.id}">✏️ Edit</button>
-        <button class="btn btn-sm btn-danger" data-del="${c.id}">🗑️ Hapus</button>
-      </div>` : ''}
+      ${isAdmin ? `<div class="tab-actions"><button class="btn btn-sm btn-outline" data-edit="${c.id}">✏️ Edit</button><button class="btn btn-sm btn-danger" data-del="${c.id}">🗑️ Hapus</button></div>` : ''}
     </div>
     <h1 class="page-title">${esc(c.nama)}</h1>
     <div class="page-sub">Dari The Velmoric Codex, ensiklopedia bebas</div>
@@ -300,7 +262,7 @@ function renderChar(c) {
 }
 
 /* =========================================================
-   FORM & DRAFT OTOMATIS
+   FORM & DRAFT
    ========================================================= */
 const overlay = document.getElementById('overlay');
 const form = document.getElementById('charForm');
@@ -374,7 +336,7 @@ function hapusKarakter(id) {
 }
 
 /* =========================================================
-   CHAT AI (OPENAI DENGAN KONTEKS LORE)
+   CHAT AI (AI TOOLS - GRATIS)
    ========================================================= */
 const aiChatModal = document.getElementById('aiChatModal');
 const chatMessages = document.getElementById('chatMessages');
@@ -385,7 +347,7 @@ async function kirimPesanAI() {
   const apiKey = localStorage.getItem('openai_key');
   
   if (!pesan) return;
-  if (!apiKey) { alert("Harap isi OpenAI API Key di menu Pengaturan Admin!"); return; }
+  if (!apiKey) { alert("Harap isi API Key di menu Pengaturan Admin!"); return; }
 
   chatMessages.innerHTML += `<div class="chat-bubble chat-user">${esc(pesan)}</div>`;
   chatInput.value = '';
@@ -405,16 +367,14 @@ async function kirimPesanAI() {
   }
 
   try {
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    // UBAH URL KE AI TOOLS
+    const response = await fetch('https://platform.aitools.cfd/api/v1/chat/completions', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
       body: JSON.stringify({
-        model: 'gpt-4o-mini',
+        model: 'deepseek-chat', // Model gratis dari AI Tools
         messages: [
-          { 
-            role: 'system', 
-            content: `Kamu adalah Arsitek Velmor, asisten AI dari The Velmoric Codex. Tugasmu adalah membantu user memahami lore, memberikan saran cerita, atau menjawab pertanyaan seputar dunia Velmor. Gunakan data berikut sebagai referensi utamamu:\n\n${contextLore}\n\nJawablah dengan gaya bahasa fantasi yang bijaksana, imajinatif, dan ringkas.` 
-          },
+          { role: 'system', content: `Kamu adalah Arsitek Velmor, asisten AI dari The Velmoric Codex. Tugasmu adalah membantu user memahami lore, memberikan saran cerita, atau menjawab pertanyaan seputar dunia Velmor. Gunakan data berikut sebagai referensi utamamu:\n\n${contextLore}\n\nJawablah dengan gaya bahasa fantasi yang bijaksana, imajinatif, dan ringkas.` },
           { role: 'user', content: pesan }
         ],
         max_tokens: 400
@@ -432,7 +392,7 @@ async function kirimPesanAI() {
     }
   } catch (error) {
     document.getElementById(loadingId).remove();
-    chatMessages.innerHTML += `<div class="chat-bubble chat-ai" style="color:#ff6b6b;">Gagal terhubung ke OpenAI. Periksa koneksi internet.</div>`;
+    chatMessages.innerHTML += `<div class="chat-bubble chat-ai" style="color:#ff6b6b;">Gagal terhubung ke AI. Periksa koneksi internet.</div>`;
   }
   chatMessages.scrollTop = chatMessages.scrollHeight;
 }
@@ -494,13 +454,8 @@ document.getElementById('btnLogout').addEventListener('click', async () => {
 });
 
 document.getElementById('btnMusic').addEventListener('click', () => {
-  if (bgMusic.paused) { 
-    bgMusic.play(); 
-    document.getElementById('btnMusic').textContent = '⏸️'; 
-  } else { 
-    bgMusic.pause(); 
-    document.getElementById('btnMusic').textContent = '🎵';
-  }
+  if (bgMusic.paused) { bgMusic.play(); document.getElementById('btnMusic').textContent = '⏸️'; } 
+  else { bgMusic.pause(); document.getElementById('btnMusic').textContent = '🎵'; }
 });
 
 document.getElementById('btnExport').addEventListener('click', () => {
@@ -545,17 +500,8 @@ charListEl.addEventListener('click', e => {
 mainEl.addEventListener('click', e => {
   if (e.target.closest('[data-edit]')) { openModal(e.target.closest('[data-edit]').dataset.edit); return; }
   if (e.target.closest('[data-del]')) { hapusKarakter(e.target.closest('[data-del]').dataset.del); return; }
-  if (e.target.closest('#openSettingsBtn')) { 
-    loadLocalSettingsToForm();
-    settingsModal.classList.add('show'); 
-    return; 
-  }
-  if (e.target.closest('.toc a')) {
-    e.preventDefault();
-    const target = document.querySelector(e.target.closest('.toc a').getAttribute('href'));
-    if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    return;
-  }
+  if (e.target.closest('#openSettingsBtn')) { loadLocalSettingsToForm(); settingsModal.classList.add('show'); return; }
+  if (e.target.closest('.toc a')) { e.preventDefault(); const target = document.querySelector(e.target.closest('.toc a').getAttribute('href')); if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' }); return; }
   if (e.target.closest('[data-open]')) { currentId = e.target.closest('[data-open]').dataset.open; currentView = 'article'; render(); window.scrollTo({ top: 0 }); return; }
   if (e.target.closest('#homeAdd') || e.target.closest('#adminAddBtn')) openModal();
 });
