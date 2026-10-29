@@ -4,10 +4,12 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>The Velmoric Codex — Ensiklopedia Karakter</title>
+  <meta name="description" content="Arsip hidup tentang benua, ras, karakter, dan segala yang ada di antaranya.">
   
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=EB+Garamond:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+  
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
@@ -42,12 +44,19 @@
 
   <!-- ================= FLOATING CONTROLS (MUSIC & AI) ================= -->
   <div class="floating-controls">
-    <button class="float-btn" id="btnMusic" style="display:none;" title="Putar Musik">🎵</button>
+    <!-- Tombol Prev (Sebelumnya) -->
+    <button class="float-btn" id="btnPrevTrack" style="display:none; font-size: 18px;" title="Lagu Sebelumnya">⏮️</button>
+    <!-- Tombol Play/Pause -->
+    <button class="float-btn" id="btnMusic" style="display:none;" title="Putar / Jeda Musik">🎵</button>
+    <!-- Tombol Next (Berikutnya) -->
+    <button class="float-btn" id="btnNextTrack" style="display:none; font-size: 18px;" title="Lagu Berikutnya">⏭️</button>
+    <!-- Tombol Chat AI -->
     <button class="float-btn" id="btnChatAI" title="Tanya Arsitek Velmor (AI)">🤖</button>
   </div>
   
   <!-- Audio Player (Tersembunyi) -->
-  <audio id="bgMusic" loop></audio>
+  <!-- crossorigin="anonymous" wajib ditambahkan agar bisa memutar file dari domain luar (Catbox) -->
+  <audio id="bgMusic" loop crossorigin="anonymous"></audio>
 
   <!-- ================= MODAL CHAT AI ================= -->
   <div class="overlay" id="aiChatModal">
@@ -76,22 +85,26 @@
         <button class="icon-btn" id="closeSettings">✕</button>
       </div>
       <div style="padding: 20px;">
+        <!-- Tema -->
         <label class="field full" style="flex-direction: row; align-items: center; justify-content: space-between; background: var(--bg-dark); padding: 10px; border-radius: 4px; margin-bottom: 15px; cursor:pointer;">
           <span>Mode Terang (Light Mode)</span>
           <input type="checkbox" id="toggleTheme" style="width: auto; transform: scale(1.5);">
         </label>
 
+        <!-- Musik Playlist (Textarea) -->
         <label class="field full">
-          <span>Link Musik Latar (MP3/URL)</span>
-          <input type="url" id="inputMusicUrl" placeholder="https://.../lagu.mp3">
+          <span>Playlist Musik (Satu URL MP3 per baris)</span>
+          <textarea id="inputMusicUrl" rows="4" placeholder="https://files.catbox.moe/lagu1.mp3&#10;https://files.catbox.moe/lagu2.mp3"></textarea>
         </label>
 
+        <!-- OpenAI API Key / AI Tools API Key -->
         <label class="field full">
-          <span>OpenAI API Key (sk-...)</span>
-          <input type="password" id="inputApiKey" placeholder="sk-proj-...">
-          <small style="color:var(--text-muted); font-size:12px;">Kunci ini hanya tersimpan di browser Anda, tidak di server.</small>
+          <span>API Key (OpenAI / AI Tools)</span>
+          <input type="password" id="inputApiKey" placeholder="sk-... / AIza...">
+          <small style="color:var(--text-muted); font-size:12px;">Kunci ini hanya tersimpan di browser Anda, tidak di server publik.</small>
         </label>
 
+        <!-- Backup Data -->
         <div style="display:flex; gap:10px; margin-top:20px; border-top: 1px solid var(--border-color); padding-top: 20px;">
           <button class="btn btn-outline" id="btnExport" style="flex:1;">⬇️ Ekspor Data (.json)</button>
           <label class="btn btn-outline" style="flex:1; text-align:center; cursor:pointer;">
