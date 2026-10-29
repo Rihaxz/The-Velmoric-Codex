@@ -111,7 +111,7 @@ async function simpanPengaturanGlobal(theme, musicUrlsArray, apiKey) {
 }
 
 /* =========================================================
-   LOGIKA UI PLAYER MUSIK (SVG VERSION)
+   LOGIKA UI PLAYER MUSIK
    ========================================================= */
 const bgMusic = document.getElementById('bgMusic');
 
@@ -393,7 +393,7 @@ function hapusKarakter(id) {
 }
 
 /* =========================================================
-   CHAT AI (NATURAL LOGIC + LORE CONTEXT)
+   CHAT AI (DENGAN ERROR HANDLING LEBIH BAIK)
    ========================================================= */
 const aiChatModal = document.getElementById('aiChatModal');
 const chatMessages = document.getElementById('chatMessages');
@@ -414,7 +414,6 @@ async function kirimPesanAI() {
   chatMessages.innerHTML += `<div class="chat-bubble chat-ai" id="${loadingId}">...</div>`;
   chatMessages.scrollTop = chatMessages.scrollHeight;
 
-  // Kumpulkan Lore
   let contextLore = "Data karakter di database saat ini:\n";
   if (characters.length === 0) {
     contextLore += "(Belum ada data).";
@@ -424,7 +423,6 @@ async function kirimPesanAI() {
     });
   }
 
-  // PROMPT BARU: Bisa Ngobrol Santai, Tapi Tetap Tahu Lore
   const systemPrompt = `Kamu adalah Arsitek Velmor, penjaga perpustakaan The Velmoric Codex. 
 Kamu memiliki kepribadian yang bijaksana, sedikit misterius, namun ramah dan bisa mengobrol santai seperti manusia biasa.
 - Jika user menyapamu dengan santai (contoh: "oi", "halo", "p"), balaslah dengan natural dan santai (contoh: "Ada apa, penjelajah?", "Halo, ada yang bisa kubantu?").
@@ -448,18 +446,27 @@ ${contextLore}`;
       })
     });
 
+    // Cek jika response bukan JSON (misal error HTML dari server)
+    const contentType = response.headers.get("content-type");
+    if (!contentType || !contentType.includes("application/json")) {
+       const textError = await response.text();
+       throw new Error(`Respon server tidak valid: ${textError.substring(0, 100)}...`);
+    }
+
     const data = await response.json();
     document.getElementById(loadingId).remove();
 
     if (data.error) {
-      chatMessages.innerHTML += `<div class="chat-bubble chat-ai" style="color:#ff6b6b;">Error: ${esc(data.error.message)}</div>`;
+      chatMessages.innerHTML += `<div class="chat-bubble chat-ai" style="color:#ff6b6b;">Error API: ${esc(data.error.message || JSON.stringify(data.error))}</div>`;
     } else {
       const balasan = data.choices[0].message.content;
       chatMessages.innerHTML += `<div class="chat-bubble chat-ai">${esc(balasan)}</div>`;
     }
   } catch (error) {
     document.getElementById(loadingId).remove();
-    chatMessages.innerHTML += `<div class="chat-bubble chat-ai" style="color:#ff6b6b;">Koneksi terputus. Coba lagi.</div>`;
+    // Menampilkan error asli ke layar chat
+    chatMessages.innerHTML += `<div class="chat-bubble chat-ai" style="color:#ff6b6b;">Koneksi terputus: ${esc(error.message)}<br><small>Cek Console (F12) untuk detail.</small></div>`;
+    console.error("AI Chat Error:", error);
   }
   chatMessages.scrollTop = chatMessages.scrollHeight;
 }
