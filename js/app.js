@@ -61,23 +61,6 @@ async function hapusDataDariFirebase(id) {
 }
 
 /* =========================================================
-   UPLOAD GAMBAR KE PICRD
-   ========================================================= */
-async function uploadKePicrd(file) {
-  const formData = new FormData();
-  formData.append('file', file);
-  
-  const response = await fetch('https://picrd.com/api/upload', {
-    method: 'POST',
-    body: formData
-  });
-  
-  if (!response.ok) throw new Error('Gagal mengunggah gambar');
-  const data = await response.json();
-  return data.image_url;
-}
-
-/* =========================================================
    UTILITAS & RENDER UTAMA
    ========================================================= */
 function getChar(id) { return characters.find(c => c.id === id); }
@@ -162,10 +145,9 @@ function cardHTML(c) {
 }
 
 /* =========================================================
-   VIEW: PANEL ADMIN (BARU)
+   VIEW: PANEL ADMIN
    ========================================================= */
 function renderAdminDashboard() {
-  // Hitung statistik
   const totalChar = characters.length;
   const totalFoto = characters.filter(c => c.foto).length;
   const totalRas = new Set(characters.map(c => c.ras).filter(Boolean)).size;
@@ -174,7 +156,6 @@ function renderAdminDashboard() {
     <h1 class="page-title">Panel Admin</h1>
     <div class="page-sub">Selamat datang, Administrator. Kelola isi Codex dari sini.</div>
 
-    <!-- Kartu Statistik -->
     <div class="card-grid" style="margin-bottom: 30px;">
       <div class="card" style="cursor:default; border-left: 3px solid var(--accent-gold);">
         <div class="card-body">
@@ -201,7 +182,6 @@ function renderAdminDashboard() {
       <button class="btn btn-primary btn-sm" id="adminAddBtn" style="margin-left:auto;">+ Tambah Baru</button>
     </div>
 
-    <!-- Tabel Kelola Karakter -->
     <div style="background: var(--bg-darker); border: 1px solid var(--border-color); border-radius: 4px; overflow-x: auto;">
       <table style="width: 100%; border-collapse: collapse; text-align: left;">
         <thead>
@@ -290,19 +270,27 @@ function renderChar(c) {
 const overlay = document.getElementById('overlay');
 const form = document.getElementById('charForm');
 const modalTtl = document.getElementById('modalTitle');
-const fileInput = document.getElementById('fotoFile');
+const fotoUrlInput = document.getElementById('fotoUrlInput');
 const previewWrap = document.getElementById('previewWrap');
 const fotoPreview = document.getElementById('fotoPreview');
-const submitBtn = document.getElementById('submitBtn');
 
-fileInput.addEventListener('change', function(e) {
-  const file = e.target.files[0];
-  if (file) {
-    const reader = new FileReader();
-    reader.onload = function(e) { fotoPreview.src = e.target.result; previewWrap.style.display = 'block'; };
-    reader.readAsDataURL(file);
+// Fitur Live Preview saat link di-paste
+fotoUrlInput.addEventListener('input', function() {
+  const url = this.value.trim();
+  if (url) {
+    fotoPreview.src = url;
+    previewWrap.style.display = 'block';
+    
+    // Jika link rusak / bukan gambar
+    fotoPreview.onerror = function() {
+      previewWrap.style.display = 'none'; // Sembunyikan jika error
+    };
+    fotoPreview.onload = function() {
+      previewWrap.style.display = 'block'; // Munculkan jika gambar sukses dimuat
+    }
   } else {
-    previewWrap.style.display = 'none'; fotoPreview.src = '';
+    previewWrap.style.display = 'none';
+    fotoPreview.src = '';
   }
 });
 
@@ -310,18 +298,21 @@ function openModal(id) {
   if (!isAdmin) return;
   editingId = id || null;
   form.reset();
-  previewWrap.style.display = 'none';
-  fotoPreview.src = '';
-  modalTtl.textContent = id ? 'Edit Entri' : 'Tambah Entri Baru';
-
+  
   if (id) {
     const c = getChar(id);
     if (c) {
       Object.keys(c).forEach(k => { const el = form.elements[k]; if (el) el.value = c[k] ?? ''; });
-      if (c.foto) { fotoPreview.src = c.foto; previewWrap.style.display = 'block'; }
+      if (c.foto) { 
+        fotoPreview.src = c.foto; 
+        previewWrap.style.display = 'block'; 
+      } else {
+        previewWrap.style.display = 'none';
+      }
     }
   } else {
     form.elements.avatar.value = '👤';
+    previewWrap.style.display = 'none';
   }
 
   overlay.classList.add('show');
@@ -335,30 +326,14 @@ form.addEventListener('submit', async (e) => {
   e.preventDefault();
   if (!isAdmin) return;
   
+  // Ambil data form (termasuk link foto)
   const data = Object.fromEntries(new FormData(form).entries());
   data.nama = (data.nama || '').trim();
   if (!data.nama) return;
 
-  const file = fileInput.files[0];
-  let finalFotoUrl = editingId ? getChar(editingId)?.foto : null;
+  // Pastikan string kosong jika tidak ada foto
+  data.foto = (data.foto || '').trim();
 
-  if (file) {
-    try {
-      submitBtn.disabled = true;
-      submitBtn.textContent = '⏳ Mengunggah...';
-      const url = await uploadKePicrd(file);
-      finalFotoUrl = url;
-      submitBtn.textContent = '💾 Simpan';
-      submitBtn.disabled = false;
-    } catch (error) {
-      alert('Gagal upload foto: ' + error.message);
-      submitBtn.textContent = '💾 Simpan';
-      submitBtn.disabled = false;
-      return;
-    }
-  }
-
-  data.foto = finalFotoUrl || '';
   closeModal();
 
   if (editingId) {
@@ -401,7 +376,7 @@ loginForm.addEventListener('submit', async (e) => {
     loginOverlay.classList.remove('show');
     loginForm.reset();
   } catch (error) {
-    errTxt.textContent = "Login gagal: Email atau password salah.";
+    errTxt.textContent = "Login gagal: " + error.message;
   } finally {
     btn.disabled = false; btn.textContent = 'Masuk';
   }
@@ -443,7 +418,6 @@ mainEl.addEventListener('click', e => {
   }
   if (e.target.closest('[data-open]')) { currentId = e.target.closest('[data-open]').dataset.open; currentView = 'article'; render(); window.scrollTo({ top: 0 }); return; }
   
-  // Tombol di dalam halaman Home / Admin
   if (e.target.closest('#homeAdd') || e.target.closest('#adminAddBtn')) openModal();
 });
 
@@ -480,7 +454,7 @@ window.addEventListener('load', () => {
           isAdmin = false;
           document.getElementById('btnLogin').style.display = 'inline-flex';
           document.getElementById('btnLogout').style.display = 'none';
-          currentView = 'home'; // Balik ke home jika logout
+          currentView = 'home'; 
         }
         render();
       });
