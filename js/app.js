@@ -36,7 +36,7 @@ async function simpanDataKeFirebase(data) {
     await addDoc(collection(window.firebaseDB, "karakter"), data);
     muatDataDariFirebase();
   } catch (error) {
-    alert("Gagal menyimpan data. Pastikan Anda sudah login.");
+    alert("Gagal menyimpan data. Pastikan Anda sudah login dan Security Rules sudah benar.");
   }
 }
 
@@ -85,8 +85,15 @@ function render() {
   // Tampilkan/Sembunyikan menu berdasarkan status login
   const adminElements = ['btnAdd', 'navAdd', 'navAdmin'];
   adminElements.forEach(id => {
-    document.getElementById(id).style.display = isAdmin ? (id === 'btnAdd' ? 'inline-flex' : 'flex') : 'none';
+    const el = document.getElementById(id);
+    if(el) el.style.display = isAdmin ? (id === 'btnAdd' ? 'inline-flex' : 'flex') : 'none';
   });
+
+  // Atur tombol login/logout
+  const loginBtn = document.getElementById('btnLogin');
+  const logoutBtn = document.getElementById('btnLogout');
+  if (loginBtn) loginBtn.style.display = isAdmin ? 'none' : 'inline-flex';
+  if (logoutBtn) logoutBtn.style.display = isAdmin ? 'inline-flex' : 'none';
 
   renderSidebar();
 
@@ -129,7 +136,7 @@ function renderHome() {
     </div>
     ${list.length
       ? `<div class="card-grid">${list.map(cardHTML).join('')}</div>`
-      : `<div class="empty-state">Codex ini masih kosong.</div>`}
+      : `<div class="empty-state">Codex ini masih kosong atau data gagal dimuat.</div>`}
   `;
 }
 
@@ -275,24 +282,21 @@ const previewWrap = document.getElementById('previewWrap');
 const fotoPreview = document.getElementById('fotoPreview');
 
 // Fitur Live Preview saat link di-paste
-fotoUrlInput.addEventListener('input', function() {
-  const url = this.value.trim();
-  if (url) {
-    fotoPreview.src = url;
-    previewWrap.style.display = 'block';
-    
-    // Jika link rusak / bukan gambar
-    fotoPreview.onerror = function() {
-      previewWrap.style.display = 'none'; // Sembunyikan jika error
-    };
-    fotoPreview.onload = function() {
-      previewWrap.style.display = 'block'; // Munculkan jika gambar sukses dimuat
+if(fotoUrlInput) {
+  fotoUrlInput.addEventListener('input', function() {
+    const url = this.value.trim();
+    if (url) {
+      fotoPreview.src = url;
+      previewWrap.style.display = 'block';
+      
+      fotoPreview.onerror = function() { previewWrap.style.display = 'none'; };
+      fotoPreview.onload = function() { previewWrap.style.display = 'block'; }
+    } else {
+      previewWrap.style.display = 'none';
+      fotoPreview.src = '';
     }
-  } else {
-    previewWrap.style.display = 'none';
-    fotoPreview.src = '';
-  }
-});
+  });
+}
 
 function openModal(id) {
   if (!isAdmin) return;
@@ -326,12 +330,9 @@ form.addEventListener('submit', async (e) => {
   e.preventDefault();
   if (!isAdmin) return;
   
-  // Ambil data form (termasuk link foto)
   const data = Object.fromEntries(new FormData(form).entries());
   data.nama = (data.nama || '').trim();
   if (!data.nama) return;
-
-  // Pastikan string kosong jika tidak ada foto
   data.foto = (data.foto || '').trim();
 
   closeModal();
@@ -358,8 +359,10 @@ function hapusKarakter(id) {
 const loginOverlay = document.getElementById('loginOverlay');
 const loginForm = document.getElementById('loginForm');
 
-document.getElementById('btnLogin').addEventListener('click', () => loginOverlay.classList.add('show'));
-document.getElementById('closeLogin').addEventListener('click', () => loginOverlay.classList.remove('show'));
+if(document.getElementById('btnLogin')) {
+  document.getElementById('btnLogin').addEventListener('click', () => loginOverlay.classList.add('show'));
+  document.getElementById('closeLogin').addEventListener('click', () => loginOverlay.classList.remove('show'));
+}
 
 loginForm.addEventListener('submit', async (e) => {
   e.preventDefault();
@@ -382,13 +385,15 @@ loginForm.addEventListener('submit', async (e) => {
   }
 });
 
-document.getElementById('btnLogout').addEventListener('click', async () => {
-  const { signOut } = window.firebaseFuncs;
-  await signOut(window.firebaseAuth);
-  currentView = 'home';
-  currentId = null;
-  render();
-});
+if(document.getElementById('btnLogout')) {
+  document.getElementById('btnLogout').addEventListener('click', async () => {
+    const { signOut } = window.firebaseFuncs;
+    await signOut(window.firebaseAuth);
+    currentView = 'home';
+    currentId = null;
+    render();
+  });
+}
 
 /* =========================================================
    EVENT LISTENER UI
@@ -431,7 +436,7 @@ document.addEventListener('click', e => {
 });
 
 /* =========================================================
-   ANTI-COPY & INISIALISASI AUTH
+   ANTI-COPY
    ========================================================= */
 document.addEventListener('contextmenu', e => { if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return; e.preventDefault(); });
 document.addEventListener('keydown', e => {
@@ -440,26 +445,33 @@ document.addEventListener('keydown', e => {
   if (e.ctrlKey && (e.key === 'u' || e.key === 'U')) e.preventDefault();
 });
 
+/* =========================================================
+   MULAI APLIKASI (PALING BAWAH)
+   ========================================================= */
+// 1. Render UI pertama kali biar layar nggak kosong (sebelum Firebase siap)
+render();
+
+// 2. Inisialisasi Firebase (dikasih jeda biar script module dari index.html selesai load)
 window.addEventListener('load', () => {
   setTimeout(() => {
-    if (window.firebaseReady) {
+    if (window.firebaseReady && window.firebaseFuncs) {
       const { onAuthStateChanged } = window.firebaseFuncs;
       
+      // Pantau status login
       onAuthStateChanged(window.firebaseAuth, (user) => {
         if (user) {
           isAdmin = true;
-          document.getElementById('btnLogout').style.display = 'inline-flex';
-          document.getElementById('btnLogin').style.display = 'none';
         } else {
           isAdmin = false;
-          document.getElementById('btnLogin').style.display = 'inline-flex';
-          document.getElementById('btnLogout').style.display = 'none';
           currentView = 'home'; 
         }
-        render();
+        render(); // Render ulang buat nampilin tombol & data
       });
 
+      // Tarik data karakter dari database
       muatDataDariFirebase();
+    } else {
+      console.warn("Firebase gagal dimuat. Cek koneksi atau script di index.html.");
     }
-  }, 800);
+  }, 1500); // Jeda 1.5 detik
 });
