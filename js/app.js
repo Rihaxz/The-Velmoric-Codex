@@ -79,7 +79,6 @@ function applyGlobalSettings() {
     if (!document.getElementById('bgMusic').src) {
       loadTrack(0, false);
     }
-    // Autoplay trick
     const playOnInteraction = () => {
       document.getElementById('bgMusic').play().then(() => {
         updatePlayPauseIcon(true);
@@ -253,7 +252,7 @@ function renderAdminDashboard() {
   mainEl.innerHTML = `
     <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom: 20px;">
       <div><h1 class="page-title" style="border:none; margin:0;">Panel Admin</h1><div class="page-sub" style="margin:0;">Selamat datang, Administrator.</div></div>
-      <button class="btn btn-outline" id="openSettingsBtn">Pengaturan Web</button>
+      <button class="btn btn-outline" id="openSettingsBtn">Pengaturan</button>
     </div>
     <div class="card-grid" style="margin-bottom: 30px;">
       <div class="card" style="cursor:default; border-left: 3px solid var(--accent-gold);"><div class="card-body"><div class="card-meta">Total Entri</div><h3 style="font-size:28px; margin:0;">${characters.length}</h3></div></div>
@@ -393,7 +392,7 @@ function hapusKarakter(id) {
 }
 
 /* =========================================================
-   CHAT AI (DENGAN MODEL BARU & PROXY STABIL)
+   CHAT AI (DENGAN PROXY)
    ========================================================= */
 const aiChatModal = document.getElementById('aiChatModal');
 const chatMessages = document.getElementById('chatMessages');
@@ -425,15 +424,14 @@ async function kirimPesanAI() {
 
   const systemPrompt = `Kamu adalah Arsitek Velmor, penjaga perpustakaan The Velmoric Codex. 
 Kamu memiliki kepribadian yang bijaksana, sedikit misterius, namun ramah dan bisa mengobrol santai seperti manusia biasa.
-- Jika user menyapamu dengan santai (contoh: "oi", "halo", "p"), balaslah dengan natural dan santai.
-- JANGAN memaksakan gaya bahasa fantasi yang kaku jika user hanya mengajak ngobrol santai.
-- Namun, jika user bertanya tentang karakter, wilayah, sejarah, atau lore dunia ini, gunakan Data Referensi di bawah ini untuk menjawab dengan detail.
+- Jika user menyapamu dengan santai, balaslah dengan natural.
+- Jika user bertanya tentang karakter atau lore, gunakan Data Referensi di bawah ini.
 
 Data Referensi Lore:
 ${contextLore}`;
 
   try {
-    // GUNAKAN MODEL zhipu/glm-4-flash DAN PROXY allorigins
+    // Gunakan Proxy (ganti jika perlu)
     const targetUrl = 'https://platform.aitools.cfd/api/v1/chat/completions';
     const proxyUrl = 'https://api.allorigins.win/raw?url=' + encodeURIComponent(targetUrl);
 
@@ -456,18 +454,17 @@ ${contextLore}`;
     const data = await response.json();
     document.getElementById(loadingId).remove();
 
-    // Pengecekan format respons
     if (data.error) {
       chatMessages.innerHTML += `<div class="chat-bubble chat-ai" style="color:#ff6b6b;">Error API: ${esc(data.error.message || JSON.stringify(data.error))}</div>`;
     } else if (!data.choices || !Array.isArray(data.choices) || data.choices.length === 0) {
-      chatMessages.innerHTML += `<div class="chat-bubble chat-ai" style="color:#ff6b6b;">Gagal mendapatkan jawaban dari AI. Server penyedia sedang sibuk atau model tidak merespons dengan benar. Coba lagi dalam beberapa detik.</div>`;
+      chatMessages.innerHTML += `<div class="chat-bubble chat-ai" style="color:#ff6b6b;">Gagal mendapatkan jawaban dari AI. Server penyedia sedang sibuk. Coba lagi.</div>`;
     } else {
       const balasan = data.choices[0].message.content;
       chatMessages.innerHTML += `<div class="chat-bubble chat-ai">${esc(balasan)}</div>`;
     }
   } catch (error) {
     document.getElementById(loadingId).remove();
-    chatMessages.innerHTML += `<div class="chat-bubble chat-ai" style="color:#ff6b6b;">Koneksi terputus: ${esc(error.message)}<br><small>Cek Console (F12) untuk detail.</small></div>`;
+    chatMessages.innerHTML += `<div class="chat-bubble chat-ai" style="color:#ff6b6b;">Koneksi terputus: ${esc(error.message)}<br><small>Coba ganti proxy di kode atau cek Console (F12).</small></div>`;
     console.error("AI Chat Error:", error);
   }
   chatMessages.scrollTop = chatMessages.scrollHeight;
