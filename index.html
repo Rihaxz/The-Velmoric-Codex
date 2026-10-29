@@ -1,440 +1,200 @@
-
-<!DOCTYPE html>
+<!doctype html>
 <html lang="id">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="theme-color" content="#171512">
-
-  <title>The Velmoric Codex — Ensiklopedia Karakter</title>
-
+  <title>The Velmoric Codex</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-
-  <link
-    href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=EB+Garamond:ital,wght@0,400;0,600;1,400&display=swap"
-    rel="stylesheet"
-  >
-
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=EB+Garamond:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/style.css">
 </head>
-
 <body>
-  <!-- TOPBAR -->
-  <header class="topbar">
-    <button class="icon-btn" id="menuBtn" aria-label="Buka Menu">
-      <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor">
-        <path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/>
-      </svg>
+<header class="topbar">
+  <button class="icon-btn" id="menuBtn">☰</button>
+  <button class="brand" id="brandBtn">THE VELMORIC CODEX</button>
+  <div class="search-wrap">
+    <input id="search" class="search" type="search" placeholder="Cari nama, ras, kategori…">
+  </div>
+  <div class="actions">
+    <button class="btn" id="btnLogin">Login</button>
+    <button class="btn" id="btnLogout" hidden>Logout</button>
+    <button class="btn primary" id="btnAdd" hidden>Tambah</button>
+  </div>
+</header>
+
+<div class="layout">
+  <aside class="sidebar" id="sidebar">
+    <div class="side-title">Navigasi</div>
+    <button class="side-link active" id="navHome">Halaman Utama</button>
+    <button class="side-link" id="navAdmin" hidden>Panel Admin</button>
+    <div class="side-title">Daftar Entri</div>
+    <div id="charList"></div>
+  </aside>
+  <main class="main" id="main"></main>
+</div>
+
+<audio id="bgMusic" crossorigin="anonymous"></audio>
+
+<div class="bottom-player" id="musicPlayer">
+  <div id="trackTitle" class="track-title">Belum ada musik</div>
+  <div class="player-controls">
+    <button class="player-btn" id="btnPrevTrack">|◀</button>
+    <button class="player-btn" id="btnPlayPause">
+      <span id="iconPlay">▶</span>
+      <span id="iconPause" hidden>Ⅱ</span>
     </button>
-
-    <div class="brand" id="brandBtn">
-      <span class="brand-text">THE VELMORIC CODEX</span>
-    </div>
-
-    <div class="search-wrap">
-      <input
-        id="search"
-        class="search"
-        type="search"
-        placeholder="Cari nama, ras, atau kategori…"
-        autocomplete="off"
-      >
-    </div>
-
-    <div class="topbar-actions">
-      <button class="btn btn-outline" id="btnLogin" style="display:none;">
-        Login
-      </button>
-      <button class="btn btn-outline" id="btnLogout" style="display:none;">
-        Logout
-      </button>
-      <button class="btn btn-primary" id="btnAdd" style="display:none;">
-        Tambah
-      </button>
-    </div>
-  </header>
-
-  <!-- LAYOUT -->
-  <div class="layout">
-    <aside class="sidebar" id="sidebar">
-      <div class="side-title">Navigasi</div>
-      <div class="side-link" id="navHome">Halaman Utama</div>
-      <div class="side-link" id="navAdmin" style="display:none;">
-        Panel Admin
-      </div>
-
-      <div class="side-title">Daftar Entri</div>
-      <div id="charList"></div>
-    </aside>
-
-    <main class="main" id="main"></main>
+    <button class="player-btn" id="btnNextTrack">▶|</button>
   </div>
-
-  <!-- AI BUTTON -->
-  <div class="floating-controls">
-    <button class="float-btn" id="btnChatAI" title="Tanya Arsitek Velmor">
-      <img
-        src="https://files.catbox.moe/d8d6yz.png"
-        alt="AI"
-      >
-    </button>
+  <div class="player-progress">
+    <span id="timeCurrent">0:00</span>
+    <div class="progress-bar" id="progressBar">
+      <div class="progress-fill" id="progressFill"></div>
+    </div>
+    <span id="timeTotal">0:00</span>
   </div>
+</div>
 
-  <!-- AUDIO -->
-  <audio id="bgMusic" crossorigin="anonymous"></audio>
-
-  <!-- MUSIC PLAYER -->
-  <div class="bottom-player" id="musicPlayer">
-    <div class="player-info">
-      <svg class="player-icon" viewBox="0 0 24 24" width="24" height="24" fill="currentColor">
-        <path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/>
-      </svg>
-      <span class="player-title" id="trackTitle">Memuat lagu...</span>
-    </div>
-
-    <div class="player-controls">
-      <button class="player-btn" id="btnPrevTrack" aria-label="Lagu sebelumnya">
-        <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor">
-          <path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/>
-        </svg>
-      </button>
-
-      <button class="player-btn play-pause" id="btnPlayPause" aria-label="Putar atau jeda">
-        <svg id="iconPlay" viewBox="0 0 24 24" width="32" height="32" fill="currentColor">
-          <path d="M8 5v14l11-7z"/>
-        </svg>
-        <svg id="iconPause" viewBox="0 0 24 24" width="32" height="32" fill="currentColor" style="display:none;">
-          <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>
-        </svg>
-      </button>
-
-      <button class="player-btn" id="btnNextTrack" aria-label="Lagu berikutnya">
-        <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor">
-          <path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/>
-        </svg>
-      </button>
-    </div>
-
-    <div class="player-progress">
-      <span id="timeCurrent">0:00</span>
-      <div class="progress-bar" id="progressBar">
-        <div class="progress-fill" id="progressFill"></div>
+<div class="overlay" id="adminSettingsModal">
+  <section class="modal small">
+    <header class="modal-head">
+      <h2>Pengaturan Codex</h2>
+      <button class="icon-btn" id="closeSettings">✕</button>
+    </header>
+    <div class="modal-body">
+      <label class="theme-row">
+        Mode terang
+        <input type="checkbox" id="toggleTheme">
+      </label>
+      <label class="field">
+        Playlist musik (satu URL per baris)
+        <textarea id="inputMusicUrl" rows="5"></textarea>
+      </label>
+      <div class="actions">
+        <button class="btn" id="btnExport">Ekspor JSON</button>
+        <label class="btn">
+          Impor JSON
+          <input id="btnImport" type="file" accept=".json,application/json" hidden>
+        </label>
       </div>
-      <span id="timeTotal">0:00</span>
+      <button class="btn primary full" id="btnSaveSettings">Simpan Pengaturan</button>
     </div>
-  </div>
+  </section>
+</div>
 
-  <!-- AI CHAT MODAL -->
-  <div class="overlay" id="aiChatModal">
-    <div class="modal" style="max-width:450px;height:80vh;display:flex;flex-direction:column;">
-      <div class="modal-head">
-        <h2>Arsitek Velmor</h2>
-        <button class="icon-btn" id="closeChatAI" aria-label="Tutup chat">
-          ✕
-        </button>
+<div class="overlay" id="overlay">
+  <section class="modal">
+    <header class="modal-head">
+      <h2 id="modalTitle">Tambah Entri</h2>
+      <button class="icon-btn" id="closeModal">✕</button>
+    </header>
+    <form id="charForm">
+      <div class="form-grid">
+        <label class="field">Nama *
+          <input name="nama" required>
+        </label>
+        <label class="field">Kategori
+          <select name="kategori">
+            <option>Karakter</option>
+            <option>Makhluk</option>
+            <option>Lokasi</option>
+            <option>Senjata</option>
+            <option>Sejarah</option>
+          </select>
+        </label>
+        <label class="field">Link Foto
+          <input type="url" name="foto" id="fotoUrlInput">
+          <img id="fotoPreview" hidden alt="Pratinjau foto">
+        </label>
+        <label class="field">Avatar / Emoji
+          <input name="avatar" placeholder="👤">
+        </label>
+        <label class="field">Gelar<input name="gelar"></label>
+        <label class="field">Ras / Spesies<input name="ras"></label>
+        <label class="field">Jenis Kelamin<input name="gender"></label>
+        <label class="field">Usia<input name="usia"></label>
+        <label class="field">Tinggi<input name="tinggi"></label>
+        <label class="field">Berat<input name="berat"></label>
+        <label class="field">Asal / Dunia<input name="asal"></label>
+        <label class="field">Afiliasi<input name="afiliasi"></label>
+        <label class="field">Status<input name="status"></label>
+        <label class="field">Elemen / Kelas<input name="kelas"></label>
       </div>
-
-      <div class="chat-container">
-        <div class="chat-messages" id="chatMessages">
-          <div class="chat-bubble chat-ai">
-            Salam, penjelajah. Aku adalah Arsitek Velmor.
-            Tanyakan apa saja tentang lore, atau sekadar mengobrol santai.
-          </div>
-        </div>
-
-        <div class="chat-input-wrap">
-          <input
-            type="text"
-            id="chatInput"
-            placeholder="Ketik pesan..."
-            class="search"
-            style="max-width:100%;"
-          >
-          <button class="btn btn-primary" id="sendChat" aria-label="Kirim pesan">
-            ➤
-          </button>
-        </div>
+      <label class="field">Deskripsi<textarea name="deskripsi" rows="2"></textarea></label>
+      <label class="field">Kepribadian<textarea name="kepribadian" rows="3"></textarea></label>
+      <label class="field">Latar Belakang<textarea name="latar" rows="4"></textarea></label>
+      <label class="field">Kemampuan<textarea name="kemampuan" rows="3"></textarea></label>
+      <label class="field">Kelemahan<textarea name="kelemahan" rows="3"></textarea></label>
+      <div class="form-actions">
+        <button type="button" class="btn" id="cancelBtn">Batal</button>
+        <button class="btn primary" id="submitBtn">Simpan</button>
       </div>
-    </div>
-  </div>
+    </form>
+  </section>
+</div>
 
-  <!-- ADMIN SETTINGS -->
-  <div class="overlay" id="adminSettingsModal">
-    <div class="modal" style="max-width:500px;">
-      <div class="modal-head">
-        <h2>Pengaturan Codex</h2>
-        <button class="icon-btn" id="closeSettings" aria-label="Tutup pengaturan">
-          ✕
-        </button>
-      </div>
+<div class="overlay" id="loginOverlay">
+  <section class="modal small">
+    <header class="modal-head">
+      <h2>Login Admin</h2>
+      <button class="icon-btn" id="closeLogin">✕</button>
+    </header>
+    <form id="loginForm" class="modal-body">
+      <label class="field">Email
+        <input type="email" id="loginEmail" required autocomplete="username">
+      </label>
+      <label class="field">Password
+        <input type="password" id="loginPassword" required autocomplete="current-password">
+      </label>
+      <button class="btn primary full">Masuk</button>
+      <p id="loginError" class="error"></p>
+    </form>
+  </section>
+</div>
 
-      <div style="padding:20px;">
-        <label
-          class="field full"
-          style="flex-direction:row;align-items:center;justify-content:space-between;background:var(--bg-dark);padding:10px;border-radius:4px;margin-bottom:15px;cursor:pointer;"
-        >
-          <span>Mode Terang (Light Mode)</span>
-          <input
-            type="checkbox"
-            id="toggleTheme"
-            style="width:auto;transform:scale(1.5);"
-          >
-        </label>
+<footer>© 2026 The Velmoric Codex</footer>
 
-        <label class="field full">
-          <span>Playlist Musik (satu URL per baris)</span>
-          <textarea
-            id="inputMusicUrl"
-            rows="4"
-            placeholder="https://contoh.com/lagu1.mp3&#10;https://contoh.com/lagu2.mp3"
-          ></textarea>
-        </label>
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+import {
+  getFirestore, collection, getDocs, addDoc,
+  updateDoc, deleteDoc, doc, getDoc, setDoc
+} from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+import {
+  getAuth, signInWithEmailAndPassword,
+  onAuthStateChanged, signOut
+} from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
-        <!-- API key sengaja tidak disimpan di pengaturan browser. -->
-        <div style="display:flex;gap:10px;margin-top:20px;border-top:1px solid var(--border-color);padding-top:20px;">
-          <button class="btn btn-outline" id="btnExport" style="flex:1;">
-            Ekspor Data
-          </button>
+const config = {
+  apiKey: "GANTI_DENGAN_API_KEY_FIREBASE_MILIK_LU",
+  authDomain: "GANTI_DENGAN_AUTH_DOMAIN",
+  projectId: "GANTI_DENGAN_PROJECT_ID",
+  storageBucket: "GANTI_DENGAN_STORAGE_BUCKET",
+  messagingSenderId: "GANTI_DENGAN_MESSAGING_SENDER_ID",
+  appId: "GANTI_DENGAN_APP_ID"
+};
 
-          <label class="btn btn-outline" style="flex:1;text-align:center;cursor:pointer;">
-            Impor Data
-            <input
-              type="file"
-              id="btnImport"
-              accept=".json"
-              style="display:none;"
-            >
-          </label>
-        </div>
+try {
+  const app = initializeApp(config);
+  window.firebaseDB = getFirestore(app);
+  window.firebaseAuth = getAuth(app);
+  window.firebaseFuncs = {
+    collection, getDocs, addDoc, updateDoc,
+    deleteDoc, doc, getDoc, setDoc,
+    signInWithEmailAndPassword, onAuthStateChanged, signOut
+  };
+  window.firebaseReady = true;
+  window.dispatchEvent(new Event("firebase-ready"));
+} catch (e) {
+  console.error("Firebase init gagal", e);
+  window.dispatchEvent(new Event("firebase-error"));
+}
+</script>
 
-        <button
-          class="btn btn-primary"
-          id="btnSaveSettings"
-          style="width:100%;margin-top:20px;"
-        >
-          Simpan Pengaturan
-        </button>
-      </div>
-    </div>
-  </div>
-
-  <!-- CHARACTER FORM -->
-  <div class="overlay" id="overlay">
-    <div class="modal">
-      <div class="modal-head">
-        <h2 id="modalTitle">Tambah Entri Baru</h2>
-        <button class="icon-btn" id="closeModal" aria-label="Tutup form">
-          ✕
-        </button>
-      </div>
-
-      <form id="charForm" autocomplete="off">
-        <div class="form-grid">
-          <label class="field">
-            <span>Nama <em>*</em></span>
-            <input name="nama" required>
-          </label>
-
-          <label class="field">
-            <span>Kategori</span>
-            <select name="kategori">
-              <option value="Karakter">Karakter</option>
-              <option value="Makhluk">Makhluk / Entitas</option>
-              <option value="Lokasi">Wilayah / Lokasi</option>
-              <option value="Senjata">Senjata / Artefak</option>
-              <option value="Sejarah">Peristiwa Sejarah</option>
-            </select>
-          </label>
-
-          <label class="field">
-            <span>Link Foto</span>
-            <input
-              type="url"
-              name="foto"
-              id="fotoUrlInput"
-              placeholder="https://contoh.com/gambar.jpg"
-            >
-            <div id="previewWrap" style="display:none;margin-top:8px;text-align:center;">
-              <img
-                id="fotoPreview"
-                alt="Pratinjau foto"
-                style="max-height:100px;border-radius:4px;border:1px solid var(--accent-gold);"
-              >
-            </div>
-          </label>
-
-          <label class="field">
-            <span>Avatar (Emoji)</span>
-            <input name="avatar" placeholder="👤">
-          </label>
-
-          <label class="field"><span>Gelar / Julukan</span><input name="gelar"></label>
-          <label class="field"><span>Ras / Spesies</span><input name="ras"></label>
-          <label class="field"><span>Jenis Kelamin</span><input name="gender"></label>
-          <label class="field"><span>Usia</span><input name="usia"></label>
-          <label class="field"><span>Tinggi</span><input name="tinggi"></label>
-          <label class="field"><span>Berat</span><input name="berat"></label>
-          <label class="field"><span>Asal / Dunia</span><input name="asal"></label>
-          <label class="field"><span>Afiliasi</span><input name="afiliasi"></label>
-          <label class="field"><span>Status</span><input name="status"></label>
-          <label class="field"><span>Elemen / Kelas</span><input name="kelas"></label>
-        </div>
-
-        <label class="field full">
-          <span>Deskripsi Singkat</span>
-          <textarea name="deskripsi" rows="2"></textarea>
-        </label>
-
-        <label class="field full">
-          <span>Kepribadian / Detail</span>
-          <textarea name="kepribadian" rows="3"></textarea>
-        </label>
-
-        <label class="field full">
-          <span>Latar Belakang</span>
-          <textarea name="latar" rows="4"></textarea>
-        </label>
-
-        <label class="field full">
-          <span>Kemampuan / Kekuatan</span>
-          <textarea name="kemampuan" rows="3"></textarea>
-        </label>
-
-        <label class="field full">
-          <span>Kelemahan</span>
-          <textarea name="kelemahan" rows="3"></textarea>
-        </label>
-
-        <div class="form-actions">
-          <button type="button" class="btn btn-outline" id="cancelBtn">
-            Batal
-          </button>
-          <button type="submit" class="btn btn-primary" id="submitBtn">
-            Simpan Entri
-          </button>
-        </div>
-      </form>
-    </div>
-  </div>
-
-  <!-- ADMIN LOGIN -->
-  <div class="overlay" id="loginOverlay">
-    <div class="modal" style="max-width:400px;">
-      <div class="modal-head">
-        <h2>Login Admin</h2>
-        <button class="icon-btn" id="closeLogin" aria-label="Tutup login">
-          ✕
-        </button>
-      </div>
-
-      <form id="loginForm" style="padding:20px;">
-        <label class="field full">
-          <span>Email</span>
-          <input type="email" id="loginEmail" autocomplete="username" required>
-        </label>
-
-        <label class="field full">
-          <span>Password</span>
-          <input
-            type="password"
-            id="loginPassword"
-            autocomplete="current-password"
-            required
-          >
-        </label>
-
-        <div class="form-actions" style="border:none;padding-top:10px;">
-          <button type="submit" class="btn btn-primary" id="loginBtn">
-            Masuk
-          </button>
-        </div>
-
-        <p
-          id="loginError"
-          role="alert"
-          style="color:var(--danger);font-size:13px;margin-top:10px;text-align:center;"
-        ></p>
-      </form>
-    </div>
-  </div>
-
-  <footer style="text-align:center;padding:20px;font-size:12px;color:var(--text-muted);border-top:1px solid var(--border-color);margin-top:40px;">
-    &copy; 2026 <strong>The Velmoric Codex</strong>. All rights reserved.
-  </footer>
-
-  <!-- FIREBASE SDK -->
-  <script type="module">
-    import {
-      initializeApp
-    } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-
-    import {
-      getFirestore,
-      collection,
-      getDocs,
-      addDoc,
-      updateDoc,
-      deleteDoc,
-      doc,
-      getDoc,
-      setDoc
-    } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-
-    import {
-      getAuth,
-      signInWithEmailAndPassword,
-      onAuthStateChanged,
-      signOut
-    } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-
-    /*
-      Firebase Web API key memang dapat terlihat di frontend.
-      Batasi penggunaannya di Google Cloud Console dan amankan
-      Firestore Security Rules. Jangan taruh AI API key di sini.
-    */
-    const firebaseConfig = {
-      apiKey: "AIzaSyBb4xpWkV2sSARxKGS5UuRJwu8bG-qlkig",
-      authDomain: "login-5ab48.firebaseapp.com",
-      projectId: "login-5ab48",
-      storageBucket: "login-5ab48.firebasestorage.app",
-      messagingSenderId: "770076903708",
-      appId: "1:770076903708:web:d493b3660094c084f892d9"
-    };
-
-    try {
-      const app = initializeApp(firebaseConfig);
-
-      window.firebaseDB = getFirestore(app);
-      window.firebaseAuth = getAuth(app);
-
-      window.firebaseFuncs = {
-        collection,
-        getDocs,
-        addDoc,
-        updateDoc,
-        deleteDoc,
-        doc,
-        getDoc,
-        setDoc,
-        signInWithEmailAndPassword,
-        onAuthStateChanged,
-        signOut
-      };
-
-      window.firebaseReady = true;
-      window.dispatchEvent(new Event("firebase-ready"));
-    } catch (error) {
-      window.firebaseReady = false;
-      console.error("Firebase gagal diinisialisasi:", error);
-    }
-  </script>
-
-  <!-- MODUL APLIKASI -->
-  <script src="js/data.js"></script>
-  <script src="js/storage.js"></script>
-  <script src="js/music-player.js"></script>
-  <script src="js/chat-ai.js"></script>
-  <script src="js/logic.js"></script>
+<script src="js/data.js"></script>
+<script src="js/storage.js"></script>
+<script src="js/music-player.js"></script>
+<script src="js/logic.js"></script>
 </body>
 </html>
