@@ -1,194 +1,275 @@
 
-/* =========================================================
-   MUSIC-PLAYER.JS
-   Mengelola playlist, play/pause, next/previous, dan progress.
-   Membutuhkan:
-   - musicPlaylist
-   - currentTrackIndex
-   - applyGlobalSettings() dari storage.js
-   ========================================================= */
+(() => {
+  "use strict";
 
-const bgMusic = document.getElementById("bgMusic");
-
-function loadTrack(index, playNow = true) {
-  if (!Array.isArray(musicPlaylist) || musicPlaylist.length === 0) {
-    return;
-  }
-
-  if (!bgMusic) {
-    console.error("Elemen audio #bgMusic tidak ditemukan.");
-    return;
-  }
-
-  currentTrackIndex =
-    (index + musicPlaylist.length) % musicPlaylist.length;
-
-  const trackUrl = musicPlaylist[currentTrackIndex];
-
-  if (typeof trackUrl !== "string" || !trackUrl.trim()) {
-    console.error("URL musik tidak valid.");
-    return;
-  }
-
-  bgMusic.src = trackUrl;
-
-  let filename = "Lagu Tanpa Judul";
-
-  try {
-    const pathname = new URL(trackUrl, window.location.href).pathname;
-    filename = decodeURIComponent(pathname.split("/").pop() || "")
-      .replace(/\.mp3$/i, "")
-      .replace(/\.ogg$/i, "")
-      .replace(/\.wav$/i, "") || filename;
-  } catch {
-    // Gunakan nama default jika URL tidak dapat dibaca.
-  }
-
-  const trackTitle = document.getElementById("trackTitle");
-
-  if (trackTitle) {
-    trackTitle.textContent = filename;
-  }
-
-  if (playNow) {
-    bgMusic.play()
-      .then(() => updatePlayPauseIcon(true))
-      .catch((error) => {
-        updatePlayPauseIcon(false);
-        console.warn("Musik tidak dapat diputar:", error);
-      });
-  } else {
-    updatePlayPauseIcon(false);
-  }
-}
-
-function updatePlayPauseIcon(isPlaying) {
-  const iconPlay = document.getElementById("iconPlay");
-  const iconPause = document.getElementById("iconPause");
-
-  if (iconPlay) {
-    iconPlay.style.display = isPlaying ? "none" : "block";
-  }
-
-  if (iconPause) {
-    iconPause.style.display = isPlaying ? "block" : "none";
-  }
-}
-
-function formatTime(seconds) {
-  if (!Number.isFinite(seconds) || seconds < 0) {
-    return "0:00";
-  }
-
-  const minutes = Math.floor(seconds / 60);
-  const remainingSeconds = Math.floor(seconds % 60);
-
-  return `${minutes}:${String(remainingSeconds).padStart(2, "0")}`;
-}
-
-function initMusicPlayer() {
-  if (!bgMusic) {
-    console.warn("Pemutar musik tidak ditemukan di halaman.");
-    return;
-  }
-
-  const btnPlayPause = document.getElementById("btnPlayPause");
-  const btnNextTrack = document.getElementById("btnNextTrack");
-  const btnPrevTrack = document.getElementById("btnPrevTrack");
+  const audio = document.getElementById("bgMusic");
+  const player = document.getElementById("musicPlayer");
+  const titleElement = document.getElementById("trackTitle");
+  const playButton = document.getElementById("btnPlayPause");
+  const playIcon = document.getElementById("iconPlay");
+  const pauseIcon = document.getElementById("iconPause");
+  const previousButton = document.getElementById("btnPrevTrack");
+  const nextButton = document.getElementById("btnNextTrack");
+  const currentTimeElement = document.getElementById("timeCurrent");
+  const totalTimeElement = document.getElementById("timeTotal");
   const progressBar = document.getElementById("progressBar");
+  const progressFill = document.getElementById("progressFill");
 
-  btnPlayPause?.addEventListener("click", async () => {
-    if (bgMusic.paused) {
+  if (!audio || !player) {
+    console.warn("Music player: elemen audio atau player tidak ditemukan.");
+    return;
+  }
+
+  function getPlaylist() {
+    return Array.isArray(window.musicPlaylist)
+      ? window.musicPlaylist
+      : typeof musicPlaylist !== "undefined"
+        ? musicPlaylist
+        : [];
+  }
+
+  function getCurrentIndex() {
+    return typeof currentTrackIndex === "number"
+      ? currentTrackIndex
+      : 0;
+  }
+
+  function setCurrentIndex(index) {
+    if (typeof currentTrackIndex !== "undefined") {
+      currentTrackIndex = index;
+    }
+  }
+
+  function formatTime(seconds) {
+    if (!Number.isFinite(seconds) || seconds < 0) {
+      return "0:00";
+    }
+
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = Math.floor(seconds % 60);
+
+    return `${minutes}:${String(remainingSeconds).padStart(2, "0")}`;
+  }
+
+  function updatePlayPauseIcon() {
+    const isPlaying = !audio.paused;
+
+    if (playIcon) {
+      playIcon.hidden = isPlaying;
+    }
+
+    if (pauseIcon) {
+      pauseIcon.hidden = !isPlaying;
+    }
+
+    if (playButton) {
+      playButton.setAttribute(
+        "aria-label",
+        isPlaying ? "Jeda musik" : "Putar musik"
+      );
+      playButton.setAttribute(
+        "title",
+        isPlaying ? "Jeda musik" : "Putar musik"
+      );
+    }
+  }
+
+  function updateProgress() {
+    const duration = audio.duration;
+    const current = audio.currentTime;
+
+    if (currentTimeElement) {
+      currentTimeElement.textContent = formatTime(current);
+    }
+
+    if (totalTimeElement) {
+      totalTimeElement.textContent = formatTime(duration);
+    }
+
+    if (progressFill) {
+      const percentage =
+        Number.isFinite(duration) && duration > 0
+          ? (current / duration) * 100
+          : 0;
+
+      progressFill.style.width = `${Math.max(
+        0,
+        Math.min(100, percentage)
+      )}%`;
+    }
+
+    if (progressBar) {
+      progressBar.setAttribute(
+        "aria-valuenow",
+        String(
+          Number.isFinite(duration) && duration > 0
+            ? Math.round((current / duration) * 100)
+            : 0
+        )
+      );
+    }
+  }
+
+  function getTrackUrl(track) {
+    if (typeof track === "string") {
+      return track.trim();
+    }
+
+    if (track && typeof track === "object") {
+      return String(track.url || track.src || "").trim();
+    }
+
+    return "";
+  }
+
+  function getTrackTitle(track, index) {
+    if (track && typeof track === "object" && track.title) {
+      return String(track.title);
+    }
+
+    const url = getTrackUrl(track);
+
+    if (url) {
       try {
-        if (!bgMusic.src && musicPlaylist.length > 0) {
-          loadTrack(currentTrackIndex, false);
+        const pathname = new URL(url, window.location.href).pathname;
+        const filename = decodeURIComponent(pathname.split("/").pop() || "");
+        if (filename) {
+          return filename.replace(/\.[^/.]+$/, "");
         }
+      } catch {
+        // Gunakan nama default jika URL tidak valid.
+      }
+    }
 
-        await bgMusic.play();
-        updatePlayPauseIcon(true);
-      } catch (error) {
-        updatePlayPauseIcon(false);
+    return `Track ${index + 1}`;
+  }
+
+  function loadTrack(index, playNow = true) {
+    const playlist = getPlaylist();
+
+    if (!playlist.length) {
+      audio.pause();
+      audio.removeAttribute("src");
+      audio.load();
+
+      if (titleElement) {
+        titleElement.textContent = "Belum ada musik";
+      }
+
+      updateProgress();
+      updatePlayPauseIcon();
+      return false;
+    }
+
+    const safeIndex = ((index % playlist.length) + playlist.length) % playlist.length;
+    const track = playlist[safeIndex];
+    const url = getTrackUrl(track);
+
+    if (!url) {
+      console.warn("Music player: URL track kosong.", track);
+      return false;
+    }
+
+    setCurrentIndex(safeIndex);
+
+    if (titleElement) {
+      titleElement.textContent = getTrackTitle(track, safeIndex);
+    }
+
+    if (audio.src !== new URL(url, window.location.href).href) {
+      audio.src = url;
+      audio.load();
+    }
+
+    updateProgress();
+
+    if (playNow) {
+      audio.play().catch((error) => {
+        console.warn("Musik tidak dapat diputar otomatis:", error);
+        updatePlayPauseIcon();
+      });
+    }
+
+    return true;
+  }
+
+  function togglePlayPause() {
+    if (audio.paused) {
+      if (!audio.src) {
+        if (!loadTrack(getCurrentIndex(), false)) {
+          return;
+        }
+      }
+
+      audio.play().catch((error) => {
         console.warn("Gagal memutar musik:", error);
-      }
+        updatePlayPauseIcon();
+      });
     } else {
-      bgMusic.pause();
-      updatePlayPauseIcon(false);
+      audio.pause();
     }
-  });
+  }
 
-  btnNextTrack?.addEventListener("click", () => {
-    if (musicPlaylist.length > 0) {
-      loadTrack(currentTrackIndex + 1);
-    }
-  });
+  function playNext() {
+    loadTrack(getCurrentIndex() + 1, true);
+  }
 
-  btnPrevTrack?.addEventListener("click", () => {
-    if (musicPlaylist.length > 0) {
-      loadTrack(currentTrackIndex - 1);
-    }
-  });
-
-  bgMusic.addEventListener("ended", () => {
-    if (musicPlaylist.length > 0) {
-      loadTrack(currentTrackIndex + 1);
-    }
-  });
-
-  bgMusic.addEventListener("play", () => {
-    updatePlayPauseIcon(true);
-  });
-
-  bgMusic.addEventListener("pause", () => {
-    updatePlayPauseIcon(false);
-  });
-
-  bgMusic.addEventListener("timeupdate", () => {
-    const current = bgMusic.currentTime;
-    const duration = bgMusic.duration || 0;
-
-    const progressFill = document.getElementById("progressFill");
-    const timeCurrent = document.getElementById("timeCurrent");
-    const timeTotal = document.getElementById("timeTotal");
-
-    if (duration > 0) {
-      const percent = (current / duration) * 100;
-
-      if (progressFill) {
-        progressFill.style.width = `${percent}%`;
-      }
-
-      if (timeCurrent) {
-        timeCurrent.textContent = formatTime(current);
-      }
-
-      if (timeTotal) {
-        timeTotal.textContent = formatTime(duration);
-      }
-    }
-  });
-
-  progressBar?.addEventListener("click", (event) => {
-    if (!Number.isFinite(bgMusic.duration) || bgMusic.duration <= 0) {
+  function playPrevious() {
+    if (audio.currentTime > 3) {
+      audio.currentTime = 0;
       return;
     }
 
-    const rect = progressBar.getBoundingClientRect();
+    loadTrack(getCurrentIndex() - 1, true);
+  }
 
-    if (rect.width <= 0) return;
+  if (playButton) {
+    playButton.addEventListener("click", togglePlayPause);
+  }
 
-    const percent = Math.max(
-      0,
-      Math.min(1, (event.clientX - rect.left) / rect.width)
-    );
+  if (nextButton) {
+    nextButton.addEventListener("click", playNext);
+  }
 
-    bgMusic.currentTime = percent * bgMusic.duration;
+  if (previousButton) {
+    previousButton.addEventListener("click", playPrevious);
+  }
+
+  audio.addEventListener("play", updatePlayPauseIcon);
+  audio.addEventListener("pause", updatePlayPauseIcon);
+  audio.addEventListener("ended", playNext);
+  audio.addEventListener("timeupdate", updateProgress);
+  audio.addEventListener("loadedmetadata", updateProgress);
+  audio.addEventListener("durationchange", updateProgress);
+  audio.addEventListener("error", () => {
+    console.warn("Musik gagal dimuat. Periksa URL dan akses file musik.");
+    updatePlayPauseIcon();
   });
-}
 
-if (document.readyState === "loading") {
-  document.addEventListener("DOMContentLoaded", initMusicPlayer, {
-    once: true
-  });
-} else {
-  initMusicPlayer();
-}
+  if (progressBar) {
+    progressBar.addEventListener("click", (event) => {
+      if (!Number.isFinite(audio.duration) || audio.duration <= 0) {
+        return;
+      }
+
+      const rect = progressBar.getBoundingClientRect();
+      if (rect.width <= 0) return;
+
+      const ratio = Math.max(
+        0,
+        Math.min(1, (event.clientX - rect.left) / rect.width)
+      );
+
+      audio.currentTime = ratio * audio.duration;
+      updateProgress();
+    });
+  }
+
+  // Dipakai oleh storage.js setelah pengaturan musik dimuat.
+  window.loadTrack = loadTrack;
+  window.updatePlayPauseIcon = updatePlayPauseIcon;
+  window.formatMusicTime = formatTime;
+
+  updatePlayPauseIcon();
+  updateProgress();
+})();
