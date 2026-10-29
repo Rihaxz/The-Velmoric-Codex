@@ -1,12 +1,31 @@
 
 /* =========================================================
    STORAGE.JS
-   Tanggung jawab: Firebase CRUD dan pengaturan global.
-   Tidak menyimpan API key AI di browser.
+   Firebase database dan pengaturan global.
+   API key AI tidak boleh disimpan di file ini.
    ========================================================= */
 
+/* ---------------------------------------------------------
+   CEK FIREBASE
+   --------------------------------------------------------- */
+
+function firebaseSiap() {
+  return Boolean(
+    window.firebaseReady &&
+    window.firebaseDB &&
+    window.firebaseFuncs
+  );
+}
+
+/* ---------------------------------------------------------
+   MEMUAT DATA KARAKTER
+   --------------------------------------------------------- */
+
 async function muatDataDariFirebase() {
-  if (!window.firebaseReady) return;
+  if (!firebaseSiap()) {
+    console.warn("Firebase belum siap. Data belum dimuat.");
+    return;
+  }
 
   const { collection, getDocs } = window.firebaseFuncs;
 
@@ -15,62 +34,148 @@ async function muatDataDariFirebase() {
       collection(window.firebaseDB, "karakter")
     );
 
-    characters = [];
+    const dataBaru = [];
 
     snapshot.forEach((item) => {
-      characters.push({
+      dataBaru.push({
         id: item.id,
         ...item.data()
       });
     });
 
-    render();
+    characters = dataBaru;
+
+    if (typeof render === "function") {
+      render();
+    }
   } catch (error) {
-    console.error("Gagal memuat karakter:", error);
+    console.error("Gagal memuat karakter dari Firebase:", error);
   }
 }
 
+/* ---------------------------------------------------------
+   MENAMBAHKAN KARAKTER
+   --------------------------------------------------------- */
+
 async function simpanDataKeFirebase(data) {
-  if (!window.firebaseReady) {
-    alert("Firebase belum siap.");
-    return;
+  if (!firebaseSiap()) {
+    alert("Firebase belum siap. Coba lagi sebentar.");
+    return false;
+  }
+
+  if (!window.firebaseAuth?.currentUser) {
+    alert("Silakan login terlebih dahulu.");
+    return false;
+  }
+
+  if (!data || typeof data !== "object" || Array.isArray(data)) {
+    alert("Data karakter tidak valid.");
+    return false;
+  }
+
+  const nama = String(data.nama || "").trim();
+
+  if (!nama) {
+    alert("Nama karakter wajib diisi.");
+    return false;
   }
 
   const { collection, addDoc } = window.firebaseFuncs;
 
   try {
+    const dataAman = {
+      ...data,
+      nama
+    };
+
+    delete dataAman.id;
+
     await addDoc(
       collection(window.firebaseDB, "karakter"),
-      data
+      dataAman
     );
 
     await muatDataDariFirebase();
+
+    return true;
   } catch (error) {
     console.error("Gagal menyimpan karakter:", error);
-    alert("Gagal menyimpan data. Periksa login dan aturan Firebase.");
+    alert("Gagal menyimpan karakter. Periksa akses Firebase.");
+    return false;
   }
 }
 
+/* ---------------------------------------------------------
+   MEMPERBARUI KARAKTER
+   --------------------------------------------------------- */
+
 async function updateDataDiFirebase(id, data) {
-  if (!window.firebaseReady) return;
+  if (!firebaseSiap()) {
+    alert("Firebase belum siap.");
+    return false;
+  }
+
+  if (!window.firebaseAuth?.currentUser) {
+    alert("Silakan login terlebih dahulu.");
+    return false;
+  }
+
+  if (!id || !data || typeof data !== "object") {
+    alert("Data untuk diperbarui tidak valid.");
+    return false;
+  }
+
+  const nama = String(data.nama || "").trim();
+
+  if (!nama) {
+    alert("Nama karakter wajib diisi.");
+    return false;
+  }
 
   const { doc, updateDoc } = window.firebaseFuncs;
 
   try {
+    const dataAman = {
+      ...data,
+      nama
+    };
+
+    delete dataAman.id;
+
     await updateDoc(
       doc(window.firebaseDB, "karakter", id),
-      data
+      dataAman
     );
 
     await muatDataDariFirebase();
+
+    return true;
   } catch (error) {
     console.error("Gagal memperbarui karakter:", error);
-    alert("Gagal memperbarui data.");
+    alert("Gagal memperbarui karakter. Periksa akses Firebase.");
+    return false;
   }
 }
 
+/* ---------------------------------------------------------
+   MENGHAPUS KARAKTER
+   --------------------------------------------------------- */
+
 async function hapusDataDariFirebase(id) {
-  if (!window.firebaseReady) return;
+  if (!firebaseSiap()) {
+    alert("Firebase belum siap.");
+    return false;
+  }
+
+  if (!window.firebaseAuth?.currentUser) {
+    alert("Silakan login terlebih dahulu.");
+    return false;
+  }
+
+  if (!id) {
+    alert("ID karakter tidak valid.");
+    return false;
+  }
 
   const { doc, deleteDoc } = window.firebaseFuncs;
 
@@ -80,44 +185,65 @@ async function hapusDataDariFirebase(id) {
     );
 
     await muatDataDariFirebase();
+
+    return true;
   } catch (error) {
     console.error("Gagal menghapus karakter:", error);
-    alert("Gagal menghapus data.");
+    alert("Gagal menghapus karakter. Periksa akses Firebase.");
+    return false;
   }
 }
 
-/* =========================================================
-   PENGATURAN GLOBAL
-   ========================================================= */
+/* ---------------------------------------------------------
+   MEMUAT PENGATURAN GLOBAL
+   --------------------------------------------------------- */
 
 async function muatPengaturanGlobal() {
-  if (!window.firebaseReady) return;
+  if (!firebaseSiap()) {
+    console.warn("Firebase belum siap untuk memuat pengaturan.");
+    return;
+  }
 
   const { doc, getDoc } = window.firebaseFuncs;
 
   try {
-    const ref = doc(
+    const referensi = doc(
       window.firebaseDB,
       "pengaturan",
       "global"
     );
 
-    const snapshot = await getDoc(ref);
+    const snapshot = await getDoc(referensi);
 
-    if (!snapshot.exists()) return;
+    if (!snapshot.exists()) {
+      globalSettings = {
+        theme: "dark",
+        musicUrls: []
+      };
+
+      applyGlobalSettings();
+      return;
+    }
 
     const data = snapshot.data();
 
-    // Kompatibilitas dengan format pengaturan lama.
-    if (data.musicUrl && !data.musicUrls) {
-      data.musicUrls = [data.musicUrl];
+    // Mendukung pengaturan musik format lama.
+    let musicUrls = [];
+
+    if (Array.isArray(data.musicUrls)) {
+      musicUrls = data.musicUrls;
+    } else if (
+      typeof data.musicUrl === "string" &&
+      data.musicUrl.trim()
+    ) {
+      musicUrls = [data.musicUrl.trim()];
     }
 
     globalSettings = {
-      theme: data.theme || "dark",
-      musicUrls: Array.isArray(data.musicUrls)
-        ? data.musicUrls
-        : []
+      theme: data.theme === "light" ? "light" : "dark",
+      musicUrls: musicUrls.filter(
+        (url) => typeof url === "string" && url.trim()
+      )
     };
 
     applyGlobalSettings();
@@ -126,16 +252,31 @@ async function muatPengaturanGlobal() {
   }
 }
 
+/* ---------------------------------------------------------
+   MENERAPKAN PENGATURAN KE WEBSITE
+   --------------------------------------------------------- */
+
 function applyGlobalSettings() {
+  if (!globalSettings) {
+    globalSettings = {
+      theme: "dark",
+      musicUrls: []
+    };
+  }
+
+  const tema = globalSettings.theme === "light"
+    ? "light"
+    : "dark";
+
   document.body.classList.toggle(
     "light-mode",
-    globalSettings.theme === "light"
+    tema === "light"
   );
 
   const toggleTheme = document.getElementById("toggleTheme");
 
   if (toggleTheme) {
-    toggleTheme.checked = globalSettings.theme === "light";
+    toggleTheme.checked = tema === "light";
   }
 
   musicPlaylist = Array.isArray(globalSettings.musicUrls)
@@ -146,13 +287,17 @@ function applyGlobalSettings() {
   const audio = document.getElementById("bgMusic");
 
   if (musicPlaylist.length > 0) {
-    if (player) player.classList.add("active");
+    player?.classList.add("active");
 
-    if (audio && !audio.getAttribute("src")) {
+    if (
+      audio &&
+      !audio.getAttribute("src") &&
+      typeof loadTrack === "function"
+    ) {
       loadTrack(0, false);
     }
   } else {
-    if (player) player.classList.remove("active");
+    player?.classList.remove("active");
 
     if (audio) {
       audio.pause();
@@ -162,38 +307,42 @@ function applyGlobalSettings() {
   }
 }
 
+/* ---------------------------------------------------------
+   MENYIMPAN PENGATURAN GLOBAL
+   --------------------------------------------------------- */
+
 async function simpanPengaturanGlobal(theme, musicUrlsArray) {
-  if (!window.firebaseReady) {
+  if (!firebaseSiap()) {
     alert("Firebase belum siap.");
-    return;
+    return false;
   }
 
   if (!window.firebaseAuth?.currentUser) {
-    alert("Kamu harus login sebagai admin.");
-    return;
+    alert("Silakan login terlebih dahulu.");
+    return false;
   }
 
   const { doc, setDoc } = window.firebaseFuncs;
 
   try {
-    const safeMusicUrls = Array.isArray(musicUrlsArray)
-      ? musicUrlsArray.filter(
-          (url) => typeof url === "string" && url.trim()
-        )
+    const musicUrls = Array.isArray(musicUrlsArray)
+      ? musicUrlsArray
+          .filter((url) => typeof url === "string")
+          .map((url) => url.trim())
+          .filter(Boolean)
       : [];
+
+    const settingsBaru = {
+      theme: theme === "light" ? "light" : "dark",
+      musicUrls
+    };
 
     await setDoc(
       doc(window.firebaseDB, "pengaturan", "global"),
-      {
-        theme: theme === "light" ? "light" : "dark",
-        musicUrls: safeMusicUrls
-      }
+      settingsBaru
     );
 
-    globalSettings = {
-      theme: theme === "light" ? "light" : "dark",
-      musicUrls: safeMusicUrls
-    };
+    globalSettings = settingsBaru;
 
     applyGlobalSettings();
 
@@ -202,8 +351,11 @@ async function simpanPengaturanGlobal(theme, musicUrlsArray) {
       ?.classList.remove("show");
 
     alert("Pengaturan berhasil disimpan.");
+
+    return true;
   } catch (error) {
     console.error("Gagal menyimpan pengaturan:", error);
     alert("Gagal menyimpan pengaturan. Periksa aturan Firebase.");
+    return false;
   }
 }
