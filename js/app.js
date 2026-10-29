@@ -393,7 +393,7 @@ function hapusKarakter(id) {
 }
 
 /* =========================================================
-   CHAT AI (DENGAN ERROR HANDLING LEBIH BAIK)
+   CHAT AI (DENGAN MODEL BARU & PROXY STABIL)
    ========================================================= */
 const aiChatModal = document.getElementById('aiChatModal');
 const chatMessages = document.getElementById('chatMessages');
@@ -425,19 +425,26 @@ async function kirimPesanAI() {
 
   const systemPrompt = `Kamu adalah Arsitek Velmor, penjaga perpustakaan The Velmoric Codex. 
 Kamu memiliki kepribadian yang bijaksana, sedikit misterius, namun ramah dan bisa mengobrol santai seperti manusia biasa.
-- Jika user menyapamu dengan santai (contoh: "oi", "halo", "p"), balaslah dengan natural dan santai (contoh: "Ada apa, penjelajah?", "Halo, ada yang bisa kubantu?").
+- Jika user menyapamu dengan santai (contoh: "oi", "halo", "p"), balaslah dengan natural dan santai.
 - JANGAN memaksakan gaya bahasa fantasi yang kaku jika user hanya mengajak ngobrol santai.
-- Namun, jika user bertanya tentang karakter, wilayah, sejarah, atau lore dunia ini, gunakan Data Referensi di bawah ini untuk menjawab dengan detail, puitis, dan akurat.
+- Namun, jika user bertanya tentang karakter, wilayah, sejarah, atau lore dunia ini, gunakan Data Referensi di bawah ini untuk menjawab dengan detail.
 
 Data Referensi Lore:
 ${contextLore}`;
 
   try {
-    const response = await fetch('https://platform.aitools.cfd/api/v1/chat/completions', {
+    // GUNAKAN MODEL zhipu/glm-4-flash DAN PROXY allorigins
+    const targetUrl = 'https://platform.aitools.cfd/api/v1/chat/completions';
+    const proxyUrl = 'https://api.allorigins.win/raw?url=' + encodeURIComponent(targetUrl);
+
+    const response = await fetch(proxyUrl, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
+      headers: { 
+        'Content-Type': 'application/json', 
+        'Authorization': `Bearer ${apiKey}` 
+      },
       body: JSON.stringify({
-        model: 'zhipu/glm-4.7-flash',
+        model: 'zhipu/glm-4-flash',
         messages: [
           { role: 'system', content: systemPrompt },
           { role: 'user', content: pesan }
@@ -446,25 +453,20 @@ ${contextLore}`;
       })
     });
 
-    // Cek jika response bukan JSON (misal error HTML dari server)
-    const contentType = response.headers.get("content-type");
-    if (!contentType || !contentType.includes("application/json")) {
-       const textError = await response.text();
-       throw new Error(`Respon server tidak valid: ${textError.substring(0, 100)}...`);
-    }
-
     const data = await response.json();
     document.getElementById(loadingId).remove();
 
+    // Pengecekan format respons
     if (data.error) {
       chatMessages.innerHTML += `<div class="chat-bubble chat-ai" style="color:#ff6b6b;">Error API: ${esc(data.error.message || JSON.stringify(data.error))}</div>`;
+    } else if (!data.choices || !Array.isArray(data.choices) || data.choices.length === 0) {
+      chatMessages.innerHTML += `<div class="chat-bubble chat-ai" style="color:#ff6b6b;">Gagal mendapatkan jawaban dari AI. Server penyedia sedang sibuk atau model tidak merespons dengan benar. Coba lagi dalam beberapa detik.</div>`;
     } else {
       const balasan = data.choices[0].message.content;
       chatMessages.innerHTML += `<div class="chat-bubble chat-ai">${esc(balasan)}</div>`;
     }
   } catch (error) {
     document.getElementById(loadingId).remove();
-    // Menampilkan error asli ke layar chat
     chatMessages.innerHTML += `<div class="chat-bubble chat-ai" style="color:#ff6b6b;">Koneksi terputus: ${esc(error.message)}<br><small>Cek Console (F12) untuk detail.</small></div>`;
     console.error("AI Chat Error:", error);
   }
