@@ -11,6 +11,8 @@
 
 ## ✨ What's Inside / Isi Codex
 
+Designed to contain all forms of knowledge about the world of Velmor.
+
 Didesain untuk menampung segala bentuk pengetahuan tentang dunia Velmor, termasuk:
 
 - **Continents & Realms**
