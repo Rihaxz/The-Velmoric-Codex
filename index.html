@@ -5,6 +5,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>The Velmoric Codex — Ensiklopedia Karakter</title>
   <meta name="description" content="Arsip hidup tentang benua, ras, karakter, dan segala yang ada di antaranya.">
+  
+  <!-- Google Fonts untuk tema Fantasi -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=EB+Garamond:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+  
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
@@ -14,15 +20,17 @@
     <button class="icon-btn" id="menuBtn" title="Buka menu" aria-label="Buka menu">☰</button>
     <div class="brand" id="brandBtn">
       <span class="brand-globe">📖</span>
-      <span class="brand-text"><strong>VELMORIC</strong> CODEX</span>
+      <span class="brand-text"><strong>THE VELMORIC</strong> CODEX</span>
     </div>
     <div class="search-wrap">
       <input id="search" class="search" type="search"
              placeholder="Cari karakter, ras, afiliasi…" autocomplete="off">
     </div>
-    <button class="btn btn-primary" id="btnAdd">
-      ＋ <span>Tambah Entri</span>
-    </button>
+    
+    <!-- Tombol Login/Logout & Tambah (Disembunyikan jika belum login) -->
+    <button class="btn btn-outline" id="btnLogin" style="display:none;">Login</button>
+    <button class="btn btn-outline" id="btnLogout" style="display:none;">Logout</button>
+    <button class="btn btn-primary" id="btnAdd" style="display:none;">＋ Tambah Entri</button>
   </header>
 
   <!-- ================= LAYOUT ================= -->
@@ -30,7 +38,7 @@
     <aside class="sidebar" id="sidebar">
       <div class="side-title">Navigasi</div>
       <div class="side-link" id="navHome">🏠 <span class="side-name">Halaman Utama</span></div>
-      <div class="side-link" id="navAdd">➕ <span class="side-name">Tambah Entri</span></div>
+      <div class="side-link" id="navAdd" style="display:none;">➕ <span class="side-name">Tambah Entri</span></div>
 
       <div class="side-title">Daftar Entri</div>
       <div id="charList"></div>
@@ -39,7 +47,7 @@
     <main class="main" id="main"></main>
   </div>
 
-  <!-- ================= MODAL FORM ================= -->
+  <!-- ================= MODAL FORM KARAKTER ================= -->
   <div class="overlay" id="overlay">
     <div class="modal">
       <div class="modal-head">
@@ -51,12 +59,11 @@
         <div class="form-grid">
           <label class="field"><span>Nama <em>*</em></span><input name="nama" placeholder="Contoh: Arka Wijaya" required></label>
           
-          <!-- INPUT FOTO BARU -->
           <label class="field">
-            <span>Foto Karakter (Opsional)</span>
+            <span>Foto Karakter (Picrd)</span>
             <input type="file" id="fotoFile" accept="image/*" style="padding: 4px;">
             <div id="previewWrap" style="display:none; margin-top:8px; text-align:center;">
-              <img id="fotoPreview" style="max-height: 100px; border-radius: 4px; border: 1px solid #ccc;">
+              <img id="fotoPreview" style="max-height: 100px; border-radius: 4px; border: 1px solid #d4af37;">
             </div>
           </label>
 
@@ -80,17 +87,66 @@
         <label class="field full"><span>Kelemahan</span><textarea name="kelemahan" rows="3"></textarea></label>
 
         <div class="form-actions">
-          <button type="button" class="btn" id="cancelBtn">Batal</button>
+          <button type="button" class="btn btn-outline" id="cancelBtn">Batal</button>
           <button type="submit" class="btn btn-primary" id="submitBtn">💾 Simpan Entri</button>
         </div>
       </form>
     </div>
   </div>
 
-  <footer style="text-align: center; padding: 20px; font-size: 12px; color: #54595d; border-top: 1px solid #eaecf0; margin-top: 40px;">
+  <!-- ================= MODAL LOGIN ================= -->
+  <div class="overlay" id="loginOverlay">
+    <div class="modal" style="max-width: 400px;">
+      <div class="modal-head">
+        <h2>Login Admin</h2>
+        <button class="icon-btn" id="closeLogin" title="Tutup">✕</button>
+      </div>
+      <form id="loginForm" style="padding: 20px;">
+        <label class="field full"><span>Email</span><input type="email" id="loginEmail" required placeholder="admin@velmoric.com"></label>
+        <label class="field full"><span>Password</span><input type="password" id="loginPassword" required placeholder="••••••••"></label>
+        <div class="form-actions" style="border:none; padding-top:10px;">
+          <button type="submit" class="btn btn-primary" id="loginBtn">Masuk</button>
+        </div>
+        <p id="loginError" style="color: #ff6b6b; font-size: 13px; margin-top: 10px; text-align: center;"></p>
+      </form>
+    </div>
+  </div>
+
+  <footer style="text-align: center; padding: 20px; font-size: 12px; color: #8b8578; border-top: 1px solid #3b3831; margin-top: 40px;">
     &copy; 2026 <strong>The Velmoric Codex</strong>. All rights reserved.<br>
     <span style="font-size: 11px;">Dilarang menyalin, mendistribusikan, atau menggunakan sebagian/seluruh konten tanpa izin tertulis.</span>
   </footer>
+
+  <!-- ================= FIREBASE SDK & CONFIG ================= -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+    import { getFirestore, collection, getDocs, addDoc, updateDoc, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+    import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+
+    // 🔥 MASUKKAN KONFIGURASI FIREBASE LU DI SINI 🔥
+    const firebaseConfig = {
+      apiKey: "MASUKKAN_API_KEY_LU",
+      authDomain: "MASUKKAN_AUTH_DOMAIN_LU",
+      projectId: "MASUKKAN_PROJECT_ID_LU",
+      storageBucket: "MASUKKAN_STORAGE_BUCKET_LU",
+      messagingSenderId: "MASUKKAN_SENDER_ID_LU",
+      appId: "MASUKKAN_APP_ID_LU"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+    const auth = getAuth(app);
+
+    // Simpan ke global window agar bisa diakses oleh app.js
+    window.firebaseDB = db;
+    window.firebaseAuth = auth;
+    window.firebaseFuncs = { 
+      collection, getDocs, addDoc, updateDoc, deleteDoc, doc, 
+      signInWithEmailAndPassword, onAuthStateChanged, signOut 
+    };
+    
+    window.firebaseReady = true;
+  </script>
 
   <script src="js/data.js"></script>
   <script src="js/app.js"></script>
