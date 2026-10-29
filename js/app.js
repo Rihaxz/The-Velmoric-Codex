@@ -90,29 +90,38 @@ function applyGlobalSettings() {
     };
     document.addEventListener('click', playOnInteraction, { once: true });
   } else {
-    // Sembunyikan jika tidak ada musik
     if(btnMusic) btnMusic.style.display = 'none';
   }
 }
 
 async function simpanPengaturanGlobal(theme, musicUrl, apiKey) {
   const { doc, setDoc } = window.firebaseFuncs;
+  
+  // Pastikan user beneran login sebelum mencoba nulis ke database
+  if (!window.firebaseAuth.currentUser) {
+    alert("Gagal menyimpan: Anda harus login sebagai Admin terlebih dahulu.");
+    return;
+  }
+
   try {
+    // Proses simpan ditunggu (await) sampai server Firebase konfirmasi sukses
     await setDoc(doc(window.firebaseDB, "pengaturan", "global"), {
       theme: theme,
       musicUrl: musicUrl
     });
-    localStorage.setItem('openai_key', apiKey); // API Key tetap lokal
 
-    // Update state lokal dan terapkan langsung tanpa refresh
+    localStorage.setItem('openai_key', apiKey); 
+
+    // Update state lokal agar langsung berubah tanpa refresh
     globalSettings.theme = theme;
     globalSettings.musicUrl = musicUrl;
     applyGlobalSettings();
 
-    alert("Pengaturan Global berhasil disimpan!");
+    alert("✅ Pengaturan Global berhasil disimpan!");
     document.getElementById('adminSettingsModal').classList.remove('show');
   } catch (error) { 
-    alert("Gagal menyimpan pengaturan. Pastikan Anda sudah login sebagai Admin."); 
+    console.error("Error Firebase:", error);
+    alert("❌ Gagal menyimpan pengaturan.\n\nError: " + error.message); 
   }
 }
 
@@ -148,7 +157,6 @@ function render() {
   document.getElementById('btnLogin').style.display = isAdmin ? 'none' : 'inline-flex';
   document.getElementById('btnLogout').style.display = isAdmin ? 'inline-flex' : 'none';
 
-  // Render Sidebar & Main Content
   renderSidebar();
 
   if (currentView === 'admin' && isAdmin) {
@@ -319,7 +327,7 @@ function openModal(id) {
       if (c.foto) { fotoPreview.src = c.foto; previewWrap.style.display = 'block'; } else { previewWrap.style.display = 'none'; }
     }
   } else {
-    form.elements.avatar.value = '👤'; // Default avatar
+    form.elements.avatar.value = '👤'; 
     const savedDraft = localStorage.getItem('velmoric_draft');
     if (savedDraft) {
       try {
@@ -401,7 +409,7 @@ async function kirimPesanAI() {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
       body: JSON.stringify({
-        model: 'gpt-4o-mini', // Model terbaru yang lebih murah & cepat
+        model: 'gpt-4o-mini',
         messages: [
           { 
             role: 'system', 
@@ -450,7 +458,6 @@ document.getElementById('btnSaveSettings').addEventListener('click', () => {
 function loadLocalSettingsToForm() {
   const apiKey = localStorage.getItem('openai_key');
   if (apiKey) document.getElementById('inputApiKey').value = apiKey;
-  // Sinkronisasi form dengan state global
   document.getElementById('toggleTheme').checked = (globalSettings.theme === 'light');
   document.getElementById('inputMusicUrl').value = globalSettings.musicUrl || '';
 }
@@ -492,7 +499,7 @@ document.getElementById('btnMusic').addEventListener('click', () => {
     document.getElementById('btnMusic').textContent = '⏸️'; 
   } else { 
     bgMusic.pause(); 
-    document.getElementById('btnMusic').textContent = '🎵'; // Fix ikon kosong
+    document.getElementById('btnMusic').textContent = '🎵';
   }
 });
 
@@ -539,7 +546,6 @@ mainEl.addEventListener('click', e => {
   if (e.target.closest('[data-edit]')) { openModal(e.target.closest('[data-edit]').dataset.edit); return; }
   if (e.target.closest('[data-del]')) { hapusKarakter(e.target.closest('[data-del]').dataset.del); return; }
   if (e.target.closest('#openSettingsBtn')) { 
-    // Populate form sebelum buka modal
     loadLocalSettingsToForm();
     settingsModal.classList.add('show'); 
     return; 
