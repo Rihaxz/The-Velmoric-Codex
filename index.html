@@ -4,37 +4,36 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>The Velmoric Codex — Ensiklopedia Karakter</title>
-  <meta name="description" content="Arsip hidup tentang benua, ras, karakter, dan segala yang ada di antaranya.">
   
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=EB+Garamond:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
-  
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
 
   <!-- ================= TOPBAR ================= -->
   <header class="topbar">
-    <button class="icon-btn" id="menuBtn">☰</button>
+    <button class="icon-btn" id="menuBtn" aria-label="Buka Menu">
+      <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor"><path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/></svg>
+    </button>
     <div class="brand" id="brandBtn">
-      <span class="brand-globe">📖</span>
-      <span class="brand-text"><strong>THE VELMORIC</strong> CODEX</span>
+      <span class="brand-text">THE VELMORIC CODEX</span>
     </div>
     <div class="search-wrap">
       <input id="search" class="search" type="search" placeholder="Cari nama, ras, atau kategori…" autocomplete="off">
     </div>
     <button class="btn btn-outline" id="btnLogin" style="display:none;">Login</button>
     <button class="btn btn-outline" id="btnLogout" style="display:none;">Logout</button>
-    <button class="btn btn-primary" id="btnAdd" style="display:none;">＋ Entri Baru</button>
+    <button class="btn btn-primary" id="btnAdd" style="display:none;">Tambah Entri</button>
   </header>
 
   <!-- ================= LAYOUT ================= -->
   <div class="layout">
     <aside class="sidebar" id="sidebar">
       <div class="side-title">Navigasi</div>
-      <div class="side-link" id="navHome">🏠 <span class="side-name">Halaman Utama</span></div>
-      <div class="side-link" id="navAdmin" style="display:none;">⚙️ <span class="side-name">Panel Admin</span></div>
+      <div class="side-link" id="navHome">Halaman Utama</div>
+      <div class="side-link" id="navAdmin" style="display:none;">Panel Admin</div>
       <div class="side-title">Daftar Entri</div>
       <div id="charList"></div>
     </aside>
@@ -42,32 +41,62 @@
     <main class="main" id="main"></main>
   </div>
 
-  <!-- ================= FLOATING CONTROLS (MUSIC & AI) ================= -->
+  <!-- ================= FLOATING CONTROLS (AI) ================= -->
   <div class="floating-controls">
-    <!-- Tombol Prev (Sebelumnya) -->
-    <button class="float-btn" id="btnPrevTrack" style="display:none; font-size: 18px;" title="Lagu Sebelumnya">⏮️</button>
-    <!-- Tombol Play/Pause -->
-    <button class="float-btn" id="btnMusic" style="display:none;" title="Putar / Jeda Musik">🎵</button>
-    <!-- Tombol Next (Berikutnya) -->
-    <button class="float-btn" id="btnNextTrack" style="display:none; font-size: 18px;" title="Lagu Berikutnya">⏭️</button>
-    <!-- Tombol Chat AI -->
-    <button class="float-btn" id="btnChatAI" title="Tanya Arsitek Velmor (AI)">🤖</button>
+    <!-- Ikon Kristal Sihir untuk AI -->
+    <button class="float-btn" id="btnChatAI" title="Tanya Arsitek Velmor">
+      <svg viewBox="0 0 24 24" width="28" height="28" fill="currentColor"><path d="M12 2L2 22h20L12 2zm0 3.8l6.5 13.2h-13L12 5.8zM12 12v4"/></svg>
+    </button>
   </div>
   
   <!-- Audio Player (Tersembunyi) -->
-  <!-- crossorigin="anonymous" wajib ditambahkan agar bisa memutar file dari domain luar (Catbox) -->
-  <audio id="bgMusic" loop crossorigin="anonymous"></audio>
+  <audio id="bgMusic" crossorigin="anonymous"></audio>
+
+  <!-- ================= BOTTOM MUSIC PLAYER (UI ARTEFAK) ================= -->
+  <div class="bottom-player" id="musicPlayer">
+    <div class="player-info">
+      <!-- Ikon Gramofon/Nada SVG -->
+      <svg class="player-icon" viewBox="0 0 24 24" width="24" height="24" fill="currentColor"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg>
+      <span class="player-title" id="trackTitle">Memuat lagu...</span>
+    </div>
+    
+    <div class="player-controls">
+      <!-- Tombol Prev -->
+      <button class="player-btn" id="btnPrevTrack">
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/></svg>
+      </button>
+      
+      <!-- Tombol Play/Pause (Default Play) -->
+      <button class="player-btn play-pause" id="btnPlayPause">
+        <svg id="iconPlay" viewBox="0 0 24 24" width="32" height="32" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+        <svg id="iconPause" viewBox="0 0 24 24" width="32" height="32" fill="currentColor" style="display:none;"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
+      </button>
+
+      <!-- Tombol Next -->
+      <button class="player-btn" id="btnNextTrack">
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></svg>
+      </button>
+    </div>
+
+    <div class="player-progress">
+      <span id="timeCurrent">0:00</span>
+      <div class="progress-bar" id="progressBar">
+        <div class="progress-fill" id="progressFill"></div>
+      </div>
+      <span id="timeTotal">0:00</span>
+    </div>
+  </div>
 
   <!-- ================= MODAL CHAT AI ================= -->
   <div class="overlay" id="aiChatModal">
     <div class="modal" style="max-width: 450px; height: 80vh; display: flex; flex-direction: column;">
       <div class="modal-head">
-        <h2>🤖 Arsitek Velmor</h2>
+        <h2>Arsitek Velmor</h2>
         <button class="icon-btn" id="closeChatAI">✕</button>
       </div>
       <div class="chat-container">
         <div class="chat-messages" id="chatMessages">
-          <div class="chat-bubble chat-ai">Salam, penjelajah. Aku adalah Arsitek Velmor. Tanyakan apa saja tentang lore, karakter, atau dunia Velmoric Codex ini.</div>
+          <div class="chat-bubble chat-ai">Salam, penjelajah. Aku adalah Arsitek Velmor. Tanyakan apa saja tentang lore, atau sekadar mengobrol santai.</div>
         </div>
         <div class="chat-input-wrap">
           <input type="text" id="chatInput" placeholder="Ketik pesan..." class="search" style="max-width:100%;">
@@ -81,37 +110,31 @@
   <div class="overlay" id="adminSettingsModal">
     <div class="modal" style="max-width: 500px;">
       <div class="modal-head">
-        <h2>⚙️ Pengaturan Codex</h2>
+        <h2>Pengaturan Codex</h2>
         <button class="icon-btn" id="closeSettings">✕</button>
       </div>
       <div style="padding: 20px;">
-        <!-- Tema -->
         <label class="field full" style="flex-direction: row; align-items: center; justify-content: space-between; background: var(--bg-dark); padding: 10px; border-radius: 4px; margin-bottom: 15px; cursor:pointer;">
           <span>Mode Terang (Light Mode)</span>
           <input type="checkbox" id="toggleTheme" style="width: auto; transform: scale(1.5);">
         </label>
 
-        <!-- Musik Playlist (Textarea) -->
         <label class="field full">
           <span>Playlist Musik (Satu URL MP3 per baris)</span>
           <textarea id="inputMusicUrl" rows="4" placeholder="https://files.catbox.moe/lagu1.mp3&#10;https://files.catbox.moe/lagu2.mp3"></textarea>
         </label>
 
-        <!-- OpenAI API Key / AI Tools API Key -->
         <label class="field full">
           <span>API Key (OpenAI / AI Tools)</span>
           <input type="password" id="inputApiKey" placeholder="sk-... / AIza...">
-          <small style="color:var(--text-muted); font-size:12px;">Kunci ini hanya tersimpan di browser Anda, tidak di server publik.</small>
         </label>
 
-        <!-- Backup Data -->
         <div style="display:flex; gap:10px; margin-top:20px; border-top: 1px solid var(--border-color); padding-top: 20px;">
-          <button class="btn btn-outline" id="btnExport" style="flex:1;">⬇️ Ekspor Data (.json)</button>
+          <button class="btn btn-outline" id="btnExport" style="flex:1;">Ekspor Data</button>
           <label class="btn btn-outline" style="flex:1; text-align:center; cursor:pointer;">
-            ⬆️ Impor Data <input type="file" id="btnImport" accept=".json" style="display:none;">
+            Impor Data <input type="file" id="btnImport" accept=".json" style="display:none;">
           </label>
         </div>
-        
         <button class="btn btn-primary" id="btnSaveSettings" style="width:100%; margin-top:20px;">Simpan Pengaturan</button>
       </div>
     </div>
@@ -127,18 +150,16 @@
       <form id="charForm" autocomplete="off">
         <div class="form-grid">
           <label class="field"><span>Nama <em>*</em></span><input name="nama" required></label>
-          
           <label class="field">
             <span>Kategori</span>
             <select name="kategori">
-              <option value="Karakter">👤 Karakter</option>
-              <option value="Makhluk">🐉 Makhluk / Entitas</option>
-              <option value="Lokasi">🗺️ Wilayah / Lokasi</option>
-              <option value="Senjata">⚔️ Senjata / Artefak</option>
-              <option value="Sejarah">📜 Peristiwa Sejarah</option>
+              <option value="Karakter">Karakter</option>
+              <option value="Makhluk">Makhluk / Entitas</option>
+              <option value="Lokasi">Wilayah / Lokasi</option>
+              <option value="Senjata">Senjata / Artefak</option>
+              <option value="Sejarah">Peristiwa Sejarah</option>
             </select>
           </label>
-
           <label class="field">
             <span>Link Foto (Catbox)</span>
             <input type="url" name="foto" id="fotoUrlInput" placeholder="https://files.catbox.moe/...">
@@ -146,7 +167,6 @@
               <img id="fotoPreview" style="max-height: 100px; border-radius: 4px; border: 1px solid var(--accent-gold);">
             </div>
           </label>
-
           <label class="field"><span>Avatar (Emoji)</span><input name="avatar" placeholder="👤"></label>
           <label class="field"><span>Gelar / Julukan</span><input name="gelar"></label>
           <label class="field"><span>Ras / Spesies</span><input name="ras"></label>
@@ -159,16 +179,14 @@
           <label class="field"><span>Status</span><input name="status"></label>
           <label class="field"><span>Elemen / Kelas</span><input name="kelas"></label>
         </div>
-
         <label class="field full"><span>Deskripsi Singkat</span><textarea name="deskripsi" rows="2"></textarea></label>
         <label class="field full"><span>Kepribadian / Detail</span><textarea name="kepribadian" rows="3"></textarea></label>
         <label class="field full"><span>Latar Belakang</span><textarea name="latar" rows="4"></textarea></label>
         <label class="field full"><span>Kemampuan / Kekuatan</span><textarea name="kemampuan" rows="3"></textarea></label>
         <label class="field full"><span>Kelemahan</span><textarea name="kelemahan" rows="3"></textarea></label>
-
         <div class="form-actions">
           <button type="button" class="btn btn-outline" id="cancelBtn">Batal</button>
-          <button type="submit" class="btn btn-primary" id="submitBtn">💾 Simpan Entri</button>
+          <button type="submit" class="btn btn-primary" id="submitBtn">Simpan Entri</button>
         </div>
       </form>
     </div>
