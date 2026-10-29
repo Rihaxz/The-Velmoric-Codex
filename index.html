@@ -6,6 +6,7 @@
   <title>The Velmoric Codex — Ensiklopedia Karakter</title>
   <meta name="description" content="Arsip hidup tentang benua, ras, karakter, dan segala yang ada di antaranya.">
   
+  <!-- Google Fonts untuk tema Fantasi -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=EB+Garamond:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
@@ -26,6 +27,7 @@
              placeholder="Cari karakter, ras, afiliasi…" autocomplete="off">
     </div>
     
+    <!-- Tombol Navigasi Kanan -->
     <button class="btn btn-outline" id="btnLogin" style="display:none;">Login</button>
     <button class="btn btn-outline" id="btnLogout" style="display:none;">Logout</button>
     <button class="btn btn-primary" id="btnAdd" style="display:none;">＋ Tambah Entri</button>
@@ -37,7 +39,7 @@
       <div class="side-title">Navigasi</div>
       <div class="side-link" id="navHome">🏠 <span class="side-name">Halaman Utama</span></div>
       
-      <!-- MENU BARU: PANEL ADMIN -->
+      <!-- Menu Admin (Hanya Muncul Jika Login) -->
       <div class="side-link" id="navAdmin" style="display:none;">⚙️ <span class="side-name">Panel Admin</span></div>
       
       <div class="side-link" id="navAdd" style="display:none;">➕ <span class="side-name">Tambah Entri</span></div>
@@ -61,14 +63,15 @@
         <div class="form-grid">
           <label class="field"><span>Nama <em>*</em></span><input name="nama" placeholder="Contoh: Arka Wijaya" required></label>
           
+          <!-- INPUT LINK FOTO DARI CATBOX -->
           <label class="field">
-  <span>Link Foto (dari Catbox.moe)</span>
-  <input type="url" name="foto" id="fotoUrlInput" placeholder="Tempel link https://files.catbox.moe/... di sini">
-  <div id="previewWrap" style="display:none; margin-top:8px; text-align:center; padding:10px; background:var(--bg-dark); border-radius:4px;">
-    <img id="fotoPreview" style="max-height: 120px; border-radius: 4px; border: 1px solid #d4af37;" alt="Preview Foto">
-    <p style="font-size: 12px; color: var(--text-muted); margin-top: 8px;">Preview Foto</p>
-  </div>
-</label>
+            <span>Link Foto (dari Catbox.moe)</span>
+            <input type="url" name="foto" id="fotoUrlInput" placeholder="Tempel link https://files.catbox.moe/... di sini">
+            <div id="previewWrap" style="display:none; margin-top:8px; text-align:center; padding:10px; background:var(--bg-dark); border-radius:4px;">
+              <img id="fotoPreview" style="max-height: 120px; border-radius: 4px; border: 1px solid #d4af37;" alt="Preview Foto">
+              <p style="font-size: 12px; color: var(--text-muted); margin-top: 8px;">Preview Foto</p>
+            </div>
+          </label>
 
           <label class="field"><span>Avatar (Emoji jika tanpa foto)</span><input name="avatar" placeholder="👤"></label>
           <label class="field"><span>Gelar / Julukan</span><input name="gelar" placeholder="Sang Penjaga Naga"></label>
@@ -115,6 +118,7 @@
     </div>
   </div>
 
+  <!-- ================= FOOTER ================= -->
   <footer style="text-align: center; padding: 20px; font-size: 12px; color: #8b8578; border-top: 1px solid #3b3831; margin-top: 40px;">
     &copy; 2026 <strong>The Velmoric Codex</strong>. All rights reserved.<br>
     <span style="font-size: 11px;">Dilarang menyalin, mendistribusikan, atau menggunakan sebagian/seluruh konten tanpa izin tertulis.</span>
@@ -126,7 +130,7 @@
     import { getFirestore, collection, getDocs, addDoc, updateDoc, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
     import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
-    // 🔥 MASUKKAN KONFIGURASI FIREBASE LU DI SINI 🔥
+    // Konfigurasi Firebase (Sudah diisi)
     const firebaseConfig = {
       apiKey: "AIzaSyBb4xpWkV2sSARxKGS5UuRJwu8bG-qlkig",
       authDomain: "login-5ab48.firebaseapp.com",
@@ -140,6 +144,7 @@
     const db = getFirestore(app);
     const auth = getAuth(app);
 
+    // Simpan ke global window agar bisa diakses oleh app.js
     window.firebaseDB = db;
     window.firebaseAuth = auth;
     window.firebaseFuncs = { 
