@@ -4,32 +4,27 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>The Velmoric Codex — Ensiklopedia Karakter</title>
-  <meta name="description" content="Arsip hidup tentang benua, ras, karakter, dan segala yang ada di antaranya.">
   
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=EB+Garamond:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
-  
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
 
   <!-- ================= TOPBAR ================= -->
   <header class="topbar">
-    <button class="icon-btn" id="menuBtn" title="Buka menu" aria-label="Buka menu">☰</button>
+    <button class="icon-btn" id="menuBtn">☰</button>
     <div class="brand" id="brandBtn">
       <span class="brand-globe">📖</span>
       <span class="brand-text"><strong>THE VELMORIC</strong> CODEX</span>
     </div>
     <div class="search-wrap">
-      <input id="search" class="search" type="search"
-             placeholder="Cari karakter, ras, afiliasi…" autocomplete="off">
+      <input id="search" class="search" type="search" placeholder="Cari nama, ras, atau kategori…" autocomplete="off">
     </div>
-    
-    <!-- Tombol Login dibikin kelihatan dari awal -->
-    <button class="btn btn-outline" id="btnLogin" style="display:inline-flex;">Login</button>
+    <button class="btn btn-outline" id="btnLogin" style="display:none;">Login</button>
     <button class="btn btn-outline" id="btnLogout" style="display:none;">Logout</button>
-    <button class="btn btn-primary" id="btnAdd" style="display:none;">＋ Tambah Entri</button>
+    <button class="btn btn-primary" id="btnAdd" style="display:none;">＋ Entri Baru</button>
   </header>
 
   <!-- ================= LAYOUT ================= -->
@@ -38,8 +33,6 @@
       <div class="side-title">Navigasi</div>
       <div class="side-link" id="navHome">🏠 <span class="side-name">Halaman Utama</span></div>
       <div class="side-link" id="navAdmin" style="display:none;">⚙️ <span class="side-name">Panel Admin</span></div>
-      <div class="side-link" id="navAdd" style="display:none;">➕ <span class="side-name">Tambah Entri</span></div>
-
       <div class="side-title">Daftar Entri</div>
       <div id="charList"></div>
     </aside>
@@ -47,42 +40,115 @@
     <main class="main" id="main"></main>
   </div>
 
+  <!-- ================= FLOATING CONTROLS (MUSIC & AI) ================= -->
+  <div class="floating-controls">
+    <button class="float-btn" id="btnMusic" style="display:none;" title="Putar Musik">🎵</button>
+    <button class="float-btn" id="btnChatAI" title="Tanya Arsitek Velmor (AI)">🤖</button>
+  </div>
+  
+  <!-- Audio Player (Tersembunyi) -->
+  <audio id="bgMusic" loop></audio>
+
+  <!-- ================= MODAL CHAT AI ================= -->
+  <div class="overlay" id="aiChatModal">
+    <div class="modal" style="max-width: 450px; height: 80vh; display: flex; flex-direction: column;">
+      <div class="modal-head">
+        <h2>🤖 Arsitek Velmor</h2>
+        <button class="icon-btn" id="closeChatAI">✕</button>
+      </div>
+      <div class="chat-container">
+        <div class="chat-messages" id="chatMessages">
+          <div class="chat-bubble chat-ai">Salam, penjelajah. Aku adalah Arsitek Velmor. Tanyakan apa saja tentang lore, karakter, atau dunia Velmoric Codex ini.</div>
+        </div>
+        <div class="chat-input-wrap">
+          <input type="text" id="chatInput" placeholder="Ketik pesan..." class="search" style="max-width:100%;">
+          <button class="btn btn-primary" id="sendChat">➤</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= MODAL PENGATURAN ADMIN ================= -->
+  <div class="overlay" id="adminSettingsModal">
+    <div class="modal" style="max-width: 500px;">
+      <div class="modal-head">
+        <h2>⚙️ Pengaturan Codex</h2>
+        <button class="icon-btn" id="closeSettings">✕</button>
+      </div>
+      <div style="padding: 20px;">
+        <label class="field full" style="flex-direction: row; align-items: center; justify-content: space-between; background: var(--bg-dark); padding: 10px; border-radius: 4px; margin-bottom: 15px; cursor:pointer;">
+          <span>Mode Terang (Light Mode)</span>
+          <input type="checkbox" id="toggleTheme" style="width: auto; transform: scale(1.5);">
+        </label>
+
+        <label class="field full">
+          <span>Link Musik Latar (MP3/URL)</span>
+          <input type="url" id="inputMusicUrl" placeholder="https://.../lagu.mp3">
+        </label>
+
+        <label class="field full">
+          <span>OpenAI API Key (sk-...)</span>
+          <input type="password" id="inputApiKey" placeholder="sk-proj-...">
+          <small style="color:var(--text-muted); font-size:12px;">Kunci ini hanya tersimpan di browser Anda, tidak di server.</small>
+        </label>
+
+        <div style="display:flex; gap:10px; margin-top:20px; border-top: 1px solid var(--border-color); padding-top: 20px;">
+          <button class="btn btn-outline" id="btnExport" style="flex:1;">⬇️ Ekspor Data (.json)</button>
+          <label class="btn btn-outline" style="flex:1; text-align:center; cursor:pointer;">
+            ⬆️ Impor Data <input type="file" id="btnImport" accept=".json" style="display:none;">
+          </label>
+        </div>
+        
+        <button class="btn btn-primary" id="btnSaveSettings" style="width:100%; margin-top:20px;">Simpan Pengaturan</button>
+      </div>
+    </div>
+  </div>
+
   <!-- ================= MODAL FORM KARAKTER ================= -->
   <div class="overlay" id="overlay">
     <div class="modal">
       <div class="modal-head">
         <h2 id="modalTitle">Tambah Entri Baru</h2>
-        <button class="icon-btn" id="closeModal" title="Tutup">✕</button>
+        <button class="icon-btn" id="closeModal">✕</button>
       </div>
-
       <form id="charForm" autocomplete="off">
         <div class="form-grid">
-          <label class="field"><span>Nama <em>*</em></span><input name="nama" placeholder="Contoh: Arka Wijaya" required></label>
+          <label class="field"><span>Nama <em>*</em></span><input name="nama" required></label>
           
           <label class="field">
-            <span>Link Foto (dari Catbox.moe)</span>
-            <input type="url" name="foto" id="fotoUrlInput" placeholder="Tempel link https://files.catbox.moe/... di sini">
-            <div id="previewWrap" style="display:none; margin-top:8px; text-align:center; padding:10px; background:var(--bg-dark); border-radius:4px;">
-              <img id="fotoPreview" style="max-height: 120px; border-radius: 4px; border: 1px solid #d4af37;" alt="Preview Foto">
-              <p style="font-size: 12px; color: var(--text-muted); margin-top: 8px;">Preview Foto</p>
+            <span>Kategori</span>
+            <select name="kategori">
+              <option value="Karakter">👤 Karakter</option>
+              <option value="Makhluk">🐉 Makhluk / Entitas</option>
+              <option value="Lokasi">🗺️ Wilayah / Lokasi</option>
+              <option value="Senjata">⚔️ Senjata / Artefak</option>
+              <option value="Sejarah">📜 Peristiwa Sejarah</option>
+            </select>
+          </label>
+
+          <label class="field">
+            <span>Link Foto (Catbox)</span>
+            <input type="url" name="foto" id="fotoUrlInput" placeholder="https://files.catbox.moe/...">
+            <div id="previewWrap" style="display:none; margin-top:8px; text-align:center;">
+              <img id="fotoPreview" style="max-height: 100px; border-radius: 4px; border: 1px solid var(--accent-gold);">
             </div>
           </label>
 
-          <label class="field"><span>Avatar (Emoji jika tanpa foto)</span><input name="avatar" placeholder="👤"></label>
-          <label class="field"><span>Gelar / Julukan</span><input name="gelar" placeholder="Sang Penjaga Naga"></label>
-          <label class="field"><span>Ras / Spesies</span><input name="ras" placeholder="Manusia, Elf, Naga…"></label>
+          <label class="field"><span>Avatar (Emoji)</span><input name="avatar" placeholder="👤"></label>
+          <label class="field"><span>Gelar / Julukan</span><input name="gelar"></label>
+          <label class="field"><span>Ras / Spesies</span><input name="ras"></label>
           <label class="field"><span>Jenis Kelamin</span><input name="gender"></label>
-          <label class="field"><span>Usia</span><input name="usia" placeholder="27 tahun"></label>
-          <label class="field"><span>Tinggi</span><input name="tinggi" placeholder="182 cm"></label>
-          <label class="field"><span>Berat</span><input name="berat" placeholder="74 kg"></label>
-          <label class="field"><span>Asal / Dunia</span><input name="asal" placeholder="Kerajaan Arunika"></label>
-          <label class="field"><span>Afiliasi</span><input name="afiliasi" placeholder="Ordo Cakrawala"></label>
-          <label class="field"><span>Status</span><input name="status" placeholder="Aktif / Gugur / Hilang"></label>
-          <label class="field"><span>Elemen / Kelas</span><input name="kelas" placeholder="Api · Ksatria"></label>
+          <label class="field"><span>Usia</span><input name="usia"></label>
+          <label class="field"><span>Tinggi</span><input name="tinggi"></label>
+          <label class="field"><span>Berat</span><input name="berat"></label>
+          <label class="field"><span>Asal / Dunia</span><input name="asal"></label>
+          <label class="field"><span>Afiliasi</span><input name="afiliasi"></label>
+          <label class="field"><span>Status</span><input name="status"></label>
+          <label class="field"><span>Elemen / Kelas</span><input name="kelas"></label>
         </div>
 
-        <label class="field full"><span>Deskripsi Singkat</span><textarea name="deskripsi" rows="2" placeholder="Satu-dua kalimat yang merangkum karakter ini…"></textarea></label>
-        <label class="field full"><span>Kepribadian</span><textarea name="kepribadian" rows="3"></textarea></label>
+        <label class="field full"><span>Deskripsi Singkat</span><textarea name="deskripsi" rows="2"></textarea></label>
+        <label class="field full"><span>Kepribadian / Detail</span><textarea name="kepribadian" rows="3"></textarea></label>
         <label class="field full"><span>Latar Belakang</span><textarea name="latar" rows="4"></textarea></label>
         <label class="field full"><span>Kemampuan / Kekuatan</span><textarea name="kemampuan" rows="3"></textarea></label>
         <label class="field full"><span>Kelemahan</span><textarea name="kelemahan" rows="3"></textarea></label>
@@ -98,30 +164,26 @@
   <!-- ================= MODAL LOGIN ================= -->
   <div class="overlay" id="loginOverlay">
     <div class="modal" style="max-width: 400px;">
-      <div class="modal-head">
-        <h2>Login Admin</h2>
-        <button class="icon-btn" id="closeLogin" title="Tutup">✕</button>
-      </div>
+      <div class="modal-head"><h2>Login Admin</h2><button class="icon-btn" id="closeLogin">✕</button></div>
       <form id="loginForm" style="padding: 20px;">
-        <label class="field full"><span>Email</span><input type="email" id="loginEmail" required placeholder="admin@velmoric.com"></label>
-        <label class="field full"><span>Password</span><input type="password" id="loginPassword" required placeholder="••••••••"></label>
+        <label class="field full"><span>Email</span><input type="email" id="loginEmail" required></label>
+        <label class="field full"><span>Password</span><input type="password" id="loginPassword" required></label>
         <div class="form-actions" style="border:none; padding-top:10px;">
           <button type="submit" class="btn btn-primary" id="loginBtn">Masuk</button>
         </div>
-        <p id="loginError" style="color: #ff6b6b; font-size: 13px; margin-top: 10px; text-align: center;"></p>
+        <p id="loginError" style="color: var(--danger); font-size: 13px; margin-top: 10px; text-align: center;"></p>
       </form>
     </div>
   </div>
 
-  <footer style="text-align: center; padding: 20px; font-size: 12px; color: #8b8578; border-top: 1px solid #3b3831; margin-top: 40px;">
-    &copy; 2026 <strong>The Velmoric Codex</strong>. All rights reserved.<br>
-    <span style="font-size: 11px;">Dilarang menyalin, mendistribusikan, atau menggunakan sebagian/seluruh konten tanpa izin tertulis.</span>
+  <footer style="text-align: center; padding: 20px; font-size: 12px; color: var(--text-muted); border-top: 1px solid var(--border-color); margin-top: 40px;">
+    &copy; 2026 <strong>The Velmoric Codex</strong>. All rights reserved.
   </footer>
 
-  <!-- ================= FIREBASE SDK & CONFIG ================= -->
+  <!-- ================= FIREBASE SDK ================= -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-    import { getFirestore, collection, getDocs, addDoc, updateDoc, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+    import { getFirestore, collection, getDocs, addDoc, updateDoc, deleteDoc, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
     import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
     const firebaseConfig = {
@@ -134,16 +196,12 @@
     };
 
     const app = initializeApp(firebaseConfig);
-    const db = getFirestore(app);
-    const auth = getAuth(app);
-
-    window.firebaseDB = db;
-    window.firebaseAuth = auth;
+    window.firebaseDB = getFirestore(app);
+    window.firebaseAuth = getAuth(app);
     window.firebaseFuncs = { 
-      collection, getDocs, addDoc, updateDoc, deleteDoc, doc, 
+      collection, getDocs, addDoc, updateDoc, deleteDoc, doc, getDoc, setDoc,
       signInWithEmailAndPassword, onAuthStateChanged, signOut 
     };
-    
     window.firebaseReady = true;
   </script>
 
