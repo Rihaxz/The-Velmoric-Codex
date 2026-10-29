@@ -7,12 +7,10 @@ let editingId  = null;
 let query      = '';
 let isAdmin    = false;
 let currentView = 'home'; 
-let globalSettings = { theme: 'dark', musicUrls: [] }; // Array untuk playlist
+let globalSettings = { theme: 'dark', musicUrls: [] };
 
-// State pemutar musik
 let musicPlaylist = [];
 let currentTrackIndex = 0;
-let isMusicPlaying = false;
 
 const WATERMARK = "\u200B\u200C\u200B\u200C\u200C\u200B\u200B\u200C\u200B\u200C\u200C\u200C"; 
 function tambahWatermark(teks) { return teks ? teks + WATERMARK : teks; }
@@ -50,7 +48,7 @@ async function hapusDataDariFirebase(id) {
 }
 
 /* =========================================================
-   PENGATURAN GLOBAL & MUSIK PLAYLIST
+   PENGATURAN GLOBAL & LOGIKA MUSIK
    ========================================================= */
 async function muatPengaturanGlobal() {
   if (!window.firebaseReady) return;
@@ -61,10 +59,7 @@ async function muatPengaturanGlobal() {
     
     if (docSnap.exists()) {
       const data = docSnap.data();
-      // Dukungan kompatibilitas: jika data lama hanya punya musicUrl
-      if (data.musicUrl && !data.musicUrls) {
-        data.musicUrls = [data.musicUrl];
-      }
+      if (data.musicUrl && !data.musicUrls) data.musicUrls = [data.musicUrl];
       globalSettings = { theme: data.theme || 'dark', musicUrls: data.musicUrls || [] };
       applyGlobalSettings();
     }
@@ -72,122 +67,116 @@ async function muatPengaturanGlobal() {
 }
 
 function applyGlobalSettings() {
-  // Tema
   document.body.classList.toggle('light-mode', globalSettings.theme === 'light');
   const toggleTheme = document.getElementById('toggleTheme');
   if(toggleTheme) toggleTheme.checked = (globalSettings.theme === 'light');
 
-  // Musik Playlist
   musicPlaylist = globalSettings.musicUrls || [];
-  const bgMusic = document.getElementById('bgMusic');
-  const btnMusic = document.getElementById('btnMusic');
-  const btnNext = document.getElementById('btnNextTrack');
-  const btnPrev = document.getElementById('btnPrevTrack');
+  const player = document.getElementById('musicPlayer');
 
   if (musicPlaylist.length > 0) {
-    if(btnMusic) btnMusic.style.display = 'flex';
-    if(btnNext) btnNext.style.display = 'flex';
-    if(btnPrev) btnPrev.style.display = 'flex';
-    
-    // Set track pertama jika belum ada yang diputar
-    if (!bgMusic.src) {
-      currentTrackIndex = 0;
-      bgMusic.src = musicPlaylist[0];
+    if(player) player.classList.add('active');
+    if (!document.getElementById('bgMusic').src) {
+      loadTrack(0, false);
     }
-
     // Autoplay trick
     const playOnInteraction = () => {
-      bgMusic.play().then(() => {
-        isMusicPlaying = true;
-        if(btnMusic) btnMusic.textContent = '⏸️';
+      document.getElementById('bgMusic').play().then(() => {
+        updatePlayPauseIcon(true);
         document.removeEventListener('click', playOnInteraction);
       }).catch(e => console.log("Autoplay diblokir browser."));
     };
     document.addEventListener('click', playOnInteraction, { once: true });
   } else {
-    if(btnMusic) btnMusic.style.display = 'none';
-    if(btnNext) btnNext.style.display = 'none';
-    if(btnPrev) btnPrev.style.display = 'none';
+    if(player) player.classList.remove('active');
   }
 }
 
 async function simpanPengaturanGlobal(theme, musicUrlsArray, apiKey) {
   const { doc, setDoc } = window.firebaseFuncs;
-  
-  if (!window.firebaseAuth.currentUser) {
-    alert("Gagal menyimpan: Anda harus login sebagai Admin terlebih dahulu.");
-    return;
-  }
-
+  if (!window.firebaseAuth.currentUser) { alert("Harus login sebagai Admin!"); return; }
   try {
-    await setDoc(doc(window.firebaseDB, "pengaturan", "global"), {
-      theme: theme,
-      musicUrls: musicUrlsArray
-    });
-
+    await setDoc(doc(window.firebaseDB, "pengaturan", "global"), { theme, musicUrls: musicUrlsArray });
     localStorage.setItem('openai_key', apiKey); 
-
     globalSettings.theme = theme;
     globalSettings.musicUrls = musicUrlsArray;
     
-    // Reset pemutar musik agar memuat playlist baru
     const bgMusic = document.getElementById('bgMusic');
-    bgMusic.pause();
-    bgMusic.src = '';
-    isMusicPlaying = false;
-    currentTrackIndex = 0;
+    bgMusic.pause(); bgMusic.src = ''; 
     applyGlobalSettings();
-
-    alert("✅ Pengaturan Global berhasil disimpan!");
+    
+    alert("Pengaturan berhasil disimpan!");
     document.getElementById('adminSettingsModal').classList.remove('show');
-  } catch (error) { 
-    console.error("Error Firebase:", error);
-    alert("❌ Gagal menyimpan pengaturan.\n\nError: " + error.message); 
-  }
+  } catch (error) { alert("Gagal menyimpan: " + error.message); }
 }
 
 /* =========================================================
-   KONTROL MUSIK (PLAY, PAUSE, NEXT, PREV)
+   LOGIKA UI PLAYER MUSIK (SVG VERSION)
    ========================================================= */
-function togglePlayPause() {
-  const bgMusic = document.getElementById('bgMusic');
-  const btnMusic = document.getElementById('btnMusic');
-  if (bgMusic.paused) {
-    bgMusic.play();
-    isMusicPlaying = true;
-    if(btnMusic) btnMusic.textContent = '⏸️';
-  } else {
-    bgMusic.pause();
-    isMusicPlaying = false;
-    if(btnMusic) btnMusic.textContent = '🎵';
+const bgMusic = document.getElementById('bgMusic');
+
+function loadTrack(index, playNow = true) {
+  if (musicPlaylist.length === 0) return;
+  currentTrackIndex = index;
+  bgMusic.src = musicPlaylist[index];
+  
+  const urlParts = musicPlaylist[index].split('/');
+  const filename = urlParts[urlParts.length - 1].replace(/%20/g, ' ').replace('.mp3', '');
+  document.getElementById('trackTitle').textContent = filename || 'Lagu Tanpa Judul';
+
+  if (playNow) {
+    bgMusic.play().catch(e => console.log("Gagal putar:", e));
+    updatePlayPauseIcon(true);
   }
 }
 
-function playNextTrack() {
-  if (musicPlaylist.length === 0) return;
-  currentTrackIndex = (currentTrackIndex + 1) % musicPlaylist.length;
-  const bgMusic = document.getElementById('bgMusic');
-  bgMusic.src = musicPlaylist[currentTrackIndex];
-  bgMusic.play();
-  isMusicPlaying = true;
-  document.getElementById('btnMusic').textContent = '⏸️';
+function updatePlayPauseIcon(isPlaying) {
+  document.getElementById('iconPlay').style.display = isPlaying ? 'none' : 'block';
+  document.getElementById('iconPause').style.display = isPlaying ? 'block' : 'none';
 }
 
-function playPrevTrack() {
-  if (musicPlaylist.length === 0) return;
-  currentTrackIndex = (currentTrackIndex - 1 + musicPlaylist.length) % musicPlaylist.length;
-  const bgMusic = document.getElementById('bgMusic');
-  bgMusic.src = musicPlaylist[currentTrackIndex];
-  bgMusic.play();
-  isMusicPlaying = true;
-  document.getElementById('btnMusic').textContent = '⏸️';
-}
+document.getElementById('btnPlayPause').addEventListener('click', () => {
+  if (bgMusic.paused) { bgMusic.play(); updatePlayPauseIcon(true); } 
+  else { bgMusic.pause(); updatePlayPauseIcon(false); }
+});
 
-// Event listener untuk auto-next saat lagu selesai
-document.getElementById('bgMusic').addEventListener('ended', playNextTrack);
+document.getElementById('btnNextTrack').addEventListener('click', () => {
+  loadTrack((currentTrackIndex + 1) % musicPlaylist.length);
+});
+
+document.getElementById('btnPrevTrack').addEventListener('click', () => {
+  loadTrack((currentTrackIndex - 1 + musicPlaylist.length) % musicPlaylist.length);
+});
+
+bgMusic.addEventListener('ended', () => {
+  loadTrack((currentTrackIndex + 1) % musicPlaylist.length);
+});
+
+bgMusic.addEventListener('timeupdate', () => {
+  const current = bgMusic.currentTime;
+  const duration = bgMusic.duration || 0;
+  if (duration > 0) {
+    const percent = (current / duration) * 100;
+    document.getElementById('progressFill').style.width = percent + '%';
+    document.getElementById('timeCurrent').textContent = formatTime(current);
+    document.getElementById('timeTotal').textContent = formatTime(duration);
+  }
+});
+
+document.getElementById('progressBar').addEventListener('click', (e) => {
+  const bar = e.currentTarget;
+  const percent = e.offsetX / bar.offsetWidth;
+  if (bgMusic.duration) bgMusic.currentTime = percent * bgMusic.duration;
+});
+
+function formatTime(seconds) {
+  const m = Math.floor(seconds / 60);
+  const s = Math.floor(seconds % 60);
+  return `${m}:${s < 10 ? '0' : ''}${s}`;
+}
 
 /* =========================================================
-   UTILITAS & RENDER (Sama seperti sebelumnya)
+   UTILITAS & RENDER
    ========================================================= */
 function getChar(id) { return characters.find(c => c.id === id); }
 function filterList(arr) {
@@ -231,7 +220,7 @@ function renderSidebar() {
           <span class="side-emoji">${renderAvatar(c)}</span>
           <span class="side-name">${esc(c.nama)}</span>
         </div>`).join('')
-    : `<div class="side-empty">Codex kosong</div>`;
+    : `<div class="side-empty" style="padding:10px; color:var(--text-muted); font-size:13px;">Codex kosong</div>`;
 }
 
 function renderHome() {
@@ -240,10 +229,10 @@ function renderHome() {
     <div class="home-hero">
       <h1>The Velmoric Codex</h1>
       <p>Arsip hidup tentang benua, ras, karakter, dan segala yang ada di antaranya.</p>
-      ${isAdmin ? `<button class="btn btn-primary" id="homeAdd">＋ Tambah Entri Baru</button>` : ``}
+      ${isAdmin ? `<button class="btn btn-primary" id="homeAdd">Tambah Entri Baru</button>` : ``}
     </div>
     <div class="section-head"><h2>Daftar Entri</h2><span class="count">${list.length} entri</span></div>
-    ${list.length ? `<div class="card-grid">${list.map(cardHTML).join('')}</div>` : `<div class="empty-state">Codex ini masih kosong.</div>`}
+    ${list.length ? `<div class="card-grid">${list.map(cardHTML).join('')}</div>` : `<div class="empty-state" style="padding:30px; border:1px dashed var(--border-color); text-align:center;">Codex ini masih kosong.</div>`}
   `;
 }
 
@@ -264,13 +253,13 @@ function renderAdminDashboard() {
   mainEl.innerHTML = `
     <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom: 20px;">
       <div><h1 class="page-title" style="border:none; margin:0;">Panel Admin</h1><div class="page-sub" style="margin:0;">Selamat datang, Administrator.</div></div>
-      <button class="btn btn-outline" id="openSettingsBtn">⚙️ Pengaturan Web</button>
+      <button class="btn btn-outline" id="openSettingsBtn">Pengaturan Web</button>
     </div>
     <div class="card-grid" style="margin-bottom: 30px;">
       <div class="card" style="cursor:default; border-left: 3px solid var(--accent-gold);"><div class="card-body"><div class="card-meta">Total Entri</div><h3 style="font-size:28px; margin:0;">${characters.length}</h3></div></div>
       <div class="card" style="cursor:default; border-left: 3px solid var(--accent-brown);"><div class="card-body"><div class="card-meta">Entri dengan Foto</div><h3 style="font-size:28px; margin:0;">${totalFoto}</h3></div></div>
     </div>
-    <div class="section-head"><h2>Kelola Entri</h2><button class="btn btn-primary btn-sm" id="adminAddBtn" style="margin-left:auto;">+ Tambah Baru</button></div>
+    <div class="section-head"><h2>Kelola Entri</h2><button class="btn btn-primary btn-sm" id="adminAddBtn" style="margin-left:auto;">Tambah Baru</button></div>
     <div style="background: var(--bg-darker); border: 1px solid var(--border-color); border-radius: 4px; overflow-x: auto;">
       <table style="width: 100%; border-collapse: collapse; text-align: left;">
         <thead><tr style="background: var(--bg-dark); border-bottom: 1px solid var(--border-color);">
@@ -282,8 +271,8 @@ function renderAdminDashboard() {
               <td style="padding: 12px; display:flex; align-items:center; gap:10px;"><div style="width:30px; height:30px; border-radius:4px; overflow:hidden; display:flex; align-items:center; justify-content:center; background:var(--bg-dark);">${renderAvatar(c)}</div><strong>${esc(c.nama)}</strong></td>
               <td style="padding: 12px; color: var(--text-muted);">${esc(c.kategori || '-')}</td>
               <td style="padding: 12px; text-align:right;">
-                <button class="btn btn-sm btn-outline" data-edit="${c.id}">✏️</button>
-                <button class="btn btn-sm btn-danger" data-del="${c.id}">🗑️</button>
+                <button class="btn btn-sm btn-outline" data-edit="${c.id}">Edit</button>
+                <button class="btn btn-sm btn-danger" data-del="${c.id}">Hapus</button>
               </td>
             </tr>`).join('') : `<tr><td colspan="3" style="padding:20px; text-align:center;">Belum ada data.</td></tr>`}
         </tbody>
@@ -314,7 +303,7 @@ function renderChar(c) {
   mainEl.innerHTML = `
     <div class="page-tabs">
       <span class="tab active">Artikel</span>
-      ${isAdmin ? `<div class="tab-actions"><button class="btn btn-sm btn-outline" data-edit="${c.id}">✏️ Edit</button><button class="btn btn-sm btn-danger" data-del="${c.id}">🗑️ Hapus</button></div>` : ''}
+      ${isAdmin ? `<div class="tab-actions"><button class="btn btn-sm btn-outline" data-edit="${c.id}">Edit</button><button class="btn btn-sm btn-danger" data-del="${c.id}">Hapus</button></div>` : ''}
     </div>
     <h1 class="page-title">${esc(c.nama)}</h1>
     <div class="page-sub">Dari The Velmoric Codex, ensiklopedia bebas</div>
@@ -404,7 +393,7 @@ function hapusKarakter(id) {
 }
 
 /* =========================================================
-   CHAT AI (AI TOOLS - MODEL zhipu/glm-4.7-flash)
+   CHAT AI (NATURAL LOGIC + LORE CONTEXT)
    ========================================================= */
 const aiChatModal = document.getElementById('aiChatModal');
 const chatMessages = document.getElementById('chatMessages');
@@ -422,26 +411,37 @@ async function kirimPesanAI() {
   chatMessages.scrollTop = chatMessages.scrollHeight;
 
   const loadingId = 'loading-' + Date.now();
-  chatMessages.innerHTML += `<div class="chat-bubble chat-ai" id="${loadingId}">⏳ *Membaca arsip Velmor...*</div>`;
+  chatMessages.innerHTML += `<div class="chat-bubble chat-ai" id="${loadingId}">...</div>`;
   chatMessages.scrollTop = chatMessages.scrollHeight;
 
-  let contextLore = "Berikut adalah data karakter dan entri yang ada di dalam website The Velmoric Codex saat ini:\n";
+  // Kumpulkan Lore
+  let contextLore = "Data karakter di database saat ini:\n";
   if (characters.length === 0) {
-    contextLore += "(Belum ada karakter di database).";
+    contextLore += "(Belum ada data).";
   } else {
     characters.forEach(c => {
-      contextLore += `- Nama: ${c.nama} | Kategori: ${c.kategori || 'Karakter'} | Ras: ${c.ras || '-'} | Deskripsi: ${c.deskripsi || '-'} | Latar: ${c.latar || '-'}\n`;
+      contextLore += `- Nama: ${c.nama} | Ras: ${c.ras || '-'} | Deskripsi: ${c.deskripsi || '-'} | Latar: ${c.latar || '-'}\n`;
     });
   }
+
+  // PROMPT BARU: Bisa Ngobrol Santai, Tapi Tetap Tahu Lore
+  const systemPrompt = `Kamu adalah Arsitek Velmor, penjaga perpustakaan The Velmoric Codex. 
+Kamu memiliki kepribadian yang bijaksana, sedikit misterius, namun ramah dan bisa mengobrol santai seperti manusia biasa.
+- Jika user menyapamu dengan santai (contoh: "oi", "halo", "p"), balaslah dengan natural dan santai (contoh: "Ada apa, penjelajah?", "Halo, ada yang bisa kubantu?").
+- JANGAN memaksakan gaya bahasa fantasi yang kaku jika user hanya mengajak ngobrol santai.
+- Namun, jika user bertanya tentang karakter, wilayah, sejarah, atau lore dunia ini, gunakan Data Referensi di bawah ini untuk menjawab dengan detail, puitis, dan akurat.
+
+Data Referensi Lore:
+${contextLore}`;
 
   try {
     const response = await fetch('https://platform.aitools.cfd/api/v1/chat/completions', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
       body: JSON.stringify({
-        model: 'zhipu/glm-4.7-flash', // Model valid dari dokumentasi
+        model: 'zhipu/glm-4.7-flash',
         messages: [
-          { role: 'system', content: `Kamu adalah Arsitek Velmor, asisten AI dari The Velmoric Codex. Tugasmu adalah membantu user memahami lore, memberikan saran cerita, atau menjawab pertanyaan seputar dunia Velmor. Gunakan data berikut sebagai referensi utamamu:\n\n${contextLore}\n\nJawablah dengan gaya bahasa fantasi yang bijaksana, imajinatif, dan ringkas.` },
+          { role: 'system', content: systemPrompt },
           { role: 'user', content: pesan }
         ],
         max_tokens: 400
@@ -459,7 +459,7 @@ async function kirimPesanAI() {
     }
   } catch (error) {
     document.getElementById(loadingId).remove();
-    chatMessages.innerHTML += `<div class="chat-bubble chat-ai" style="color:#ff6b6b;">Gagal terhubung ke AI. Periksa koneksi internet.</div>`;
+    chatMessages.innerHTML += `<div class="chat-bubble chat-ai" style="color:#ff6b6b;">Koneksi terputus. Coba lagi.</div>`;
   }
   chatMessages.scrollTop = chatMessages.scrollHeight;
 }
@@ -473,7 +473,6 @@ chatInput.addEventListener('keypress', (e) => { if(e.key === 'Enter') kirimPesan
 const loginOverlay = document.getElementById('loginOverlay');
 const loginForm = document.getElementById('loginForm');
 const settingsModal = document.getElementById('adminSettingsModal');
-const bgMusic = document.getElementById('bgMusic');
 
 document.getElementById('btnSaveSettings').addEventListener('click', () => {
   const theme = document.getElementById('toggleTheme').checked ? 'light' : 'dark';
@@ -486,7 +485,6 @@ function loadLocalSettingsToForm() {
   const apiKey = localStorage.getItem('openai_key');
   if (apiKey) document.getElementById('inputApiKey').value = apiKey;
   document.getElementById('toggleTheme').checked = (globalSettings.theme === 'light');
-  // Isi textarea dengan daftar URL musik
   document.getElementById('inputMusicUrl').value = (globalSettings.musicUrls || []).join('\n');
 }
 
@@ -503,7 +501,7 @@ loginForm.addEventListener('submit', async (e) => {
   const errTxt = document.getElementById('loginError');
   const btn = document.getElementById('loginBtn');
   
-  btn.disabled = true; btn.textContent = '⏳...'; errTxt.textContent = '';
+  btn.disabled = true; btn.textContent = '...'; errTxt.textContent = '';
 
   try {
     const { signInWithEmailAndPassword } = window.firebaseFuncs;
@@ -520,11 +518,6 @@ document.getElementById('btnLogout').addEventListener('click', async () => {
   await window.firebaseFuncs.signOut(window.firebaseAuth);
   currentView = 'home'; currentId = null; render();
 });
-
-// Event listener untuk tombol musik
-document.getElementById('btnMusic').addEventListener('click', togglePlayPause);
-document.getElementById('btnNextTrack').addEventListener('click', playNextTrack);
-document.getElementById('btnPrevTrack').addEventListener('click', playPrevTrack);
 
 document.getElementById('btnExport').addEventListener('click', () => {
   const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(characters));
