@@ -7,7 +7,12 @@ let editingId  = null;
 let query      = '';
 let isAdmin    = false;
 let currentView = 'home'; 
-let globalSettings = { theme: 'dark', musicUrl: '' };
+let globalSettings = { theme: 'dark', musicUrls: [] }; // Array untuk playlist
+
+// State pemutar musik
+let musicPlaylist = [];
+let currentTrackIndex = 0;
+let isMusicPlaying = false;
 
 const WATERMARK = "\u200B\u200C\u200B\u200C\u200C\u200B\u200B\u200C\u200B\u200C\u200C\u200C"; 
 function tambahWatermark(teks) { return teks ? teks + WATERMARK : teks; }
@@ -45,7 +50,7 @@ async function hapusDataDariFirebase(id) {
 }
 
 /* =========================================================
-   PENGATURAN GLOBAL (FIREBASE)
+   PENGATURAN GLOBAL & MUSIK PLAYLIST
    ========================================================= */
 async function muatPengaturanGlobal() {
   if (!window.firebaseReady) return;
@@ -55,31 +60,45 @@ async function muatPengaturanGlobal() {
     const docSnap = await getDoc(docRef);
     
     if (docSnap.exists()) {
-      globalSettings = docSnap.data();
+      const data = docSnap.data();
+      // Dukungan kompatibilitas: jika data lama hanya punya musicUrl
+      if (data.musicUrl && !data.musicUrls) {
+        data.musicUrls = [data.musicUrl];
+      }
+      globalSettings = { theme: data.theme || 'dark', musicUrls: data.musicUrls || [] };
       applyGlobalSettings();
     }
   } catch (error) { console.error("Gagal memuat pengaturan global:", error); }
 }
 
 function applyGlobalSettings() {
+  // Tema
   document.body.classList.toggle('light-mode', globalSettings.theme === 'light');
   const toggleTheme = document.getElementById('toggleTheme');
   if(toggleTheme) toggleTheme.checked = (globalSettings.theme === 'light');
 
+  // Musik Playlist
+  musicPlaylist = globalSettings.musicUrls || [];
   const bgMusic = document.getElementById('bgMusic');
   const btnMusic = document.getElementById('btnMusic');
-  
-  if (globalSettings.musicUrl) {
-    if(bgMusic.src !== globalSettings.musicUrl) {
-       bgMusic.src = globalSettings.musicUrl;
-    }
-    const inputMusik = document.getElementById('inputMusicUrl');
-    if(inputMusik) inputMusik.value = globalSettings.musicUrl;
+  const btnNext = document.getElementById('btnNextTrack');
+  const btnPrev = document.getElementById('btnPrevTrack');
 
+  if (musicPlaylist.length > 0) {
     if(btnMusic) btnMusic.style.display = 'flex';
+    if(btnNext) btnNext.style.display = 'flex';
+    if(btnPrev) btnPrev.style.display = 'flex';
+    
+    // Set track pertama jika belum ada yang diputar
+    if (!bgMusic.src) {
+      currentTrackIndex = 0;
+      bgMusic.src = musicPlaylist[0];
+    }
 
+    // Autoplay trick
     const playOnInteraction = () => {
       bgMusic.play().then(() => {
+        isMusicPlaying = true;
         if(btnMusic) btnMusic.textContent = '⏸️';
         document.removeEventListener('click', playOnInteraction);
       }).catch(e => console.log("Autoplay diblokir browser."));
@@ -87,10 +106,12 @@ function applyGlobalSettings() {
     document.addEventListener('click', playOnInteraction, { once: true });
   } else {
     if(btnMusic) btnMusic.style.display = 'none';
+    if(btnNext) btnNext.style.display = 'none';
+    if(btnPrev) btnPrev.style.display = 'none';
   }
 }
 
-async function simpanPengaturanGlobal(theme, musicUrl, apiKey) {
+async function simpanPengaturanGlobal(theme, musicUrlsArray, apiKey) {
   const { doc, setDoc } = window.firebaseFuncs;
   
   if (!window.firebaseAuth.currentUser) {
@@ -101,13 +122,20 @@ async function simpanPengaturanGlobal(theme, musicUrl, apiKey) {
   try {
     await setDoc(doc(window.firebaseDB, "pengaturan", "global"), {
       theme: theme,
-      musicUrl: musicUrl
+      musicUrls: musicUrlsArray
     });
 
     localStorage.setItem('openai_key', apiKey); 
 
     globalSettings.theme = theme;
-    globalSettings.musicUrl = musicUrl;
+    globalSettings.musicUrls = musicUrlsArray;
+    
+    // Reset pemutar musik agar memuat playlist baru
+    const bgMusic = document.getElementById('bgMusic');
+    bgMusic.pause();
+    bgMusic.src = '';
+    isMusicPlaying = false;
+    currentTrackIndex = 0;
     applyGlobalSettings();
 
     alert("✅ Pengaturan Global berhasil disimpan!");
@@ -119,7 +147,47 @@ async function simpanPengaturanGlobal(theme, musicUrl, apiKey) {
 }
 
 /* =========================================================
-   UTILITAS & RENDER
+   KONTROL MUSIK (PLAY, PAUSE, NEXT, PREV)
+   ========================================================= */
+function togglePlayPause() {
+  const bgMusic = document.getElementById('bgMusic');
+  const btnMusic = document.getElementById('btnMusic');
+  if (bgMusic.paused) {
+    bgMusic.play();
+    isMusicPlaying = true;
+    if(btnMusic) btnMusic.textContent = '⏸️';
+  } else {
+    bgMusic.pause();
+    isMusicPlaying = false;
+    if(btnMusic) btnMusic.textContent = '🎵';
+  }
+}
+
+function playNextTrack() {
+  if (musicPlaylist.length === 0) return;
+  currentTrackIndex = (currentTrackIndex + 1) % musicPlaylist.length;
+  const bgMusic = document.getElementById('bgMusic');
+  bgMusic.src = musicPlaylist[currentTrackIndex];
+  bgMusic.play();
+  isMusicPlaying = true;
+  document.getElementById('btnMusic').textContent = '⏸️';
+}
+
+function playPrevTrack() {
+  if (musicPlaylist.length === 0) return;
+  currentTrackIndex = (currentTrackIndex - 1 + musicPlaylist.length) % musicPlaylist.length;
+  const bgMusic = document.getElementById('bgMusic');
+  bgMusic.src = musicPlaylist[currentTrackIndex];
+  bgMusic.play();
+  isMusicPlaying = true;
+  document.getElementById('btnMusic').textContent = '⏸️';
+}
+
+// Event listener untuk auto-next saat lagu selesai
+document.getElementById('bgMusic').addEventListener('ended', playNextTrack);
+
+/* =========================================================
+   UTILITAS & RENDER (Sama seperti sebelumnya)
    ========================================================= */
 function getChar(id) { return characters.find(c => c.id === id); }
 function filterList(arr) {
@@ -336,7 +404,7 @@ function hapusKarakter(id) {
 }
 
 /* =========================================================
-   CHAT AI (AI TOOLS - GRATIS)
+   CHAT AI (AI TOOLS - MODEL zhipu/glm-4.7-flash)
    ========================================================= */
 const aiChatModal = document.getElementById('aiChatModal');
 const chatMessages = document.getElementById('chatMessages');
@@ -367,12 +435,11 @@ async function kirimPesanAI() {
   }
 
   try {
-    // UBAH URL KE AI TOOLS
     const response = await fetch('https://platform.aitools.cfd/api/v1/chat/completions', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
       body: JSON.stringify({
-        model: 'deepseek-chat', // Model gratis dari AI Tools
+        model: 'zhipu/glm-4.7-flash', // Model valid dari dokumentasi
         messages: [
           { role: 'system', content: `Kamu adalah Arsitek Velmor, asisten AI dari The Velmoric Codex. Tugasmu adalah membantu user memahami lore, memberikan saran cerita, atau menjawab pertanyaan seputar dunia Velmor. Gunakan data berikut sebagai referensi utamamu:\n\n${contextLore}\n\nJawablah dengan gaya bahasa fantasi yang bijaksana, imajinatif, dan ringkas.` },
           { role: 'user', content: pesan }
@@ -410,16 +477,17 @@ const bgMusic = document.getElementById('bgMusic');
 
 document.getElementById('btnSaveSettings').addEventListener('click', () => {
   const theme = document.getElementById('toggleTheme').checked ? 'light' : 'dark';
-  const musicUrl = document.getElementById('inputMusicUrl').value.trim();
+  const musicUrlsArray = document.getElementById('inputMusicUrl').value.split('\n').map(u => u.trim()).filter(u => u.length > 0);
   const apiKey = document.getElementById('inputApiKey').value.trim();
-  simpanPengaturanGlobal(theme, musicUrl, apiKey);
+  simpanPengaturanGlobal(theme, musicUrlsArray, apiKey);
 });
 
 function loadLocalSettingsToForm() {
   const apiKey = localStorage.getItem('openai_key');
   if (apiKey) document.getElementById('inputApiKey').value = apiKey;
   document.getElementById('toggleTheme').checked = (globalSettings.theme === 'light');
-  document.getElementById('inputMusicUrl').value = globalSettings.musicUrl || '';
+  // Isi textarea dengan daftar URL musik
+  document.getElementById('inputMusicUrl').value = (globalSettings.musicUrls || []).join('\n');
 }
 
 document.getElementById('btnLogin').addEventListener('click', () => loginOverlay.classList.add('show'));
@@ -453,10 +521,10 @@ document.getElementById('btnLogout').addEventListener('click', async () => {
   currentView = 'home'; currentId = null; render();
 });
 
-document.getElementById('btnMusic').addEventListener('click', () => {
-  if (bgMusic.paused) { bgMusic.play(); document.getElementById('btnMusic').textContent = '⏸️'; } 
-  else { bgMusic.pause(); document.getElementById('btnMusic').textContent = '🎵'; }
-});
+// Event listener untuk tombol musik
+document.getElementById('btnMusic').addEventListener('click', togglePlayPause);
+document.getElementById('btnNextTrack').addEventListener('click', playNextTrack);
+document.getElementById('btnPrevTrack').addEventListener('click', playPrevTrack);
 
 document.getElementById('btnExport').addEventListener('click', () => {
   const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(characters));
