@@ -13,23 +13,25 @@
 
 Didesain untuk menampung segala bentuk pengetahuan tentang dunia Velmor, termasuk:
 
-- 🗺️ **Continents & Realms** — *Benua & Wilayah* (Geografi, perbatasan, tempat misterius).
-- 🧬 **Races & Entities** — *Ras & Entitas* (Kaum fana, makhluk purba, roh).
-- 👤 **Characters & Figures** — *Karakter & Tokoh* (Pahlawan, penjahat, legenda).
-- ✨ **Powers & Forces** — *Kekuatan & Daya* (Sihir, afinitas, seni terlarang).
-- 🌗 **Seasons & Conditions** — *Musim & Kondisi* (Siklus alam, cuaca ekstrem).
-- 📜 **Events & History** — *Peristiwa & Sejarah* (Perang, perjanjian, titik balik).
-- 🌀 **Anomalies & Curiosities** — *Anomali & Keanehan* (Fenomena yang menolak penjelasan).
+- **Continents & Realms**
+- **Races & Entities**
+- **Characters & Figures** 
+- **Powers & Forces**
+- **Seasons & Conditions**
+- **Events & History** 
+- **Anomalies & Curiosities**
 
 ---
 
 ## 🚀 Tech Stack & Features
 
 - **Pure Vanilla:** HTML5, CSS3, Vanilla JavaScript (No frameworks, no dependencies).
-- **LocalStorage:** Data karakter tersimpan otomatis di perangkat pengguna tanpa perlu database/server.
-- **Responsive:** Tampilan optimal di PC maupun HP.
-- **Wikipedia Style:** Dilengkapi Infobox, Daftar Isi (TOC), dan section artikel.
-- **Anti-Copy & Watermark:** Dilindungi dari *copy-paste* sembarangan dan disisipkan *invisible watermark* pada teks.
+- **LocalStorage:**
+- **Responsive:**
+- **Wikipedia Style:**
+- **Anti-Copy & Watermark:**
+*copy-paste*
+*invisible watermark*
 
 ---
 
@@ -37,10 +39,10 @@ Didesain untuk menampung segala bentuk pengetahuan tentang dunia Velmor, termasu
 
 ```text
 the-velmoric-codex/
-├── index.html       # Struktur utama halaman web
+├── index.html
 ├── css/
-│   └── style.css    # Styling antarmuka (tema Wikipedia)
+│   └── style.css
 ├── js/
-│   ├── data.js      # Data awal & fungsi utilitas (helper)
-│   └── app.js       # Logika utama (render, form, anti-copy)
-└── README.md        # Dokumentasi ini# The-Velmoric-Codex
+│   ├── data.js
+│   └── app.js
+└── README.md
