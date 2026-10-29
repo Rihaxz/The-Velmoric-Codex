@@ -1,172 +1,377 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="id">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="theme-color" content="#171512">
-  <title>The Velmoric Codex</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=EB+Garamond:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/style.css">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#100e0d">
+<title>The Velmoric Codex</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600;700&family=EB+Garamond:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<style>
+:root {
+  --bg:#100e0d;
+  --panel:#191613;
+  --panel2:#211c17;
+  --border:#423427;
+  --gold:#c8a568;
+  --gold2:#ead5a8;
+  --text:#eee5d5;
+  --muted:#a69a88;
+  --red:#8b3838;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html{scroll-behavior:smooth}
+body{
+  margin:0;background:var(--bg);color:var(--text);
+  font:18px/1.6 "EB Garamond",Georgia,serif;
+}
+button,input,textarea,select{font:inherit}
+button{cursor:pointer;color:inherit}
+button:focus-visible,input:focus-visible,textarea:focus-visible{
+  outline:2px solid var(--gold);outline-offset:3px
+}
+button:disabled{opacity:.5;cursor:not-allowed}
+img{max-width:100%}
+a{color:var(--gold)}
+.topbar{
+  min-height:68px;display:flex;align-items:center;gap:14px;
+  padding:12px 4%;position:sticky;top:0;z-index:20;
+  background:#100e0df2;backdrop-filter:blur(14px);
+  border-bottom:1px solid var(--border)
+}
+.brand{
+  border:0;background:none;color:var(--gold2);
+  font:700 15px Cinzel,serif;letter-spacing:2px
+}
+.icon-btn,.btn{
+  border:1px solid var(--border);background:var(--panel2);
+  border-radius:4px;padding:8px 14px
+}
+.btn:hover,.icon-btn:hover{border-color:var(--gold)}
+.btn.primary{
+  background:var(--gold);color:#18120a;border-color:var(--gold);
+  font-weight:700
+}
+.btn.danger{border-color:#8b3838;color:#e8aaaa}
+.search-wrap{flex:1;min-width:120px}
+.search,.field input,.field textarea,.field select{
+  width:100%;background:#0e0c0b;color:var(--text);
+  border:1px solid var(--border);border-radius:4px;padding:10px 12px
+}
+.actions{display:flex;gap:8px;flex-wrap:wrap}
+.layout{display:grid;grid-template-columns:245px minmax(0,1fr);min-height:calc(100vh - 150px)}
+.sidebar{
+  padding:26px 18px;border-right:1px solid var(--border);
+  background:#15120f
+}
+.side-title{
+  color:var(--gold);font:600 11px Cinzel,serif;
+  letter-spacing:2px;text-transform:uppercase;margin:12px 0
+}
+.side-link{
+  display:block;width:100%;text-align:left;padding:9px 12px;
+  margin:4px 0;border:1px solid transparent;background:none;
+  color:var(--muted);border-radius:3px
+}
+.side-link:hover,.side-link.active{
+  color:var(--gold2);background:var(--panel2);border-color:var(--border)
+}
+.main{min-width:0;padding:32px clamp(18px,4vw,58px) 100px}
+.hero{
+  min-height:320px;display:flex;flex-direction:column;justify-content:center;
+  padding:clamp(25px,5vw,65px);margin-bottom:38px;
+  border:1px solid var(--border);position:relative;overflow:hidden;
+  background:
+    linear-gradient(90deg,#100e0df5 0%,#100e0dc9 55%,#100e0d70 100%),
+    url("https://images.unsplash.com/photo-1518709268805-4e9042af9f23?auto=format&fit=crop&w=1800&q=85")
+    center/cover;
+}
+.hero:after{
+  content:"";position:absolute;inset:12px;border:1px solid #c8a56833;
+  pointer-events:none
+}
+.eyebrow{
+  color:var(--gold);font:600 11px Cinzel,serif;letter-spacing:4px;
+  text-transform:uppercase
+}
+.hero h1{
+  max-width:850px;margin:12px 0;color:var(--gold2);
+  font:600 clamp(32px,6vw,64px)/1.15 Cinzel,serif
+}
+.hero p{max-width:620px;color:#d0c3b0}
+.hero-buttons{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}
+.section-heading{
+  display:flex;justify-content:space-between;align-items:end;gap:15px;
+  margin:26px 0 17px;border-bottom:1px solid var(--border);padding-bottom:10px
+}
+h2,h3{font-family:Cinzel,serif}
+.section-heading h2{font-size:20px;color:var(--gold2);margin:0}
+.muted,.small{color:var(--muted)}
+.card-grid{
+  display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:18px
+}
+.card{
+  overflow:hidden;border:1px solid var(--border);background:var(--panel);
+  cursor:pointer;transition:transform .2s,border-color .2s
+}
+.card:hover{transform:translateY(-4px);border-color:var(--gold)}
+.card-image{
+  width:100%;height:240px;object-fit:cover;display:block;
+  background:#292018
+}
+.card-placeholder{
+  height:240px;display:grid;place-items:center;
+  background:linear-gradient(145deg,#392b20,#15110f);
+  color:var(--gold);font:600 35px Cinzel,serif
+}
+.card-body{padding:15px}
+.card-category{
+  color:var(--gold);font:10px Cinzel,serif;letter-spacing:2px;
+  text-transform:uppercase
+}
+.card h3{font-size:17px;margin:8px 0 4px;color:var(--gold2)}
+.card p{margin:0;color:var(--muted);font-size:16px}
+.empty{
+  border:1px dashed var(--border);padding:30px;text-align:center;color:var(--muted)
+}
+.article-top{margin-bottom:24px}
+.page-title{font:600 clamp(28px,5vw,44px) Cinzel,serif;color:var(--gold2)}
+.article-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(240px,320px);gap:28px}
+.article-content section{padding:10px 0 20px;border-bottom:1px solid var(--border)}
+.article-content h2{font-size:18px;color:var(--gold)}
+.infobox{border:1px solid var(--border);background:var(--panel);padding:15px;height:max-content}
+.infobox h2{font-size:18px;text-align:center;color:var(--gold2)}
+.infobox img{width:100%;max-height:340px;object-fit:cover}
+.infobox table{width:100%;border-collapse:collapse;margin-top:12px;font-size:16px}
+.infobox th,.infobox td{padding:6px 4px;text-align:left;vertical-align:top;border-bottom:1px solid var(--border)}
+.infobox th{color:var(--gold);width:40%}
+.infobox-actions{display:flex;gap:8px;margin-top:12px}
+.infobox-actions button{flex:1}
+.form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.field{display:block;margin:12px 0;color:var(--gold2);font-size:16px}
+.field input,.field textarea,.field select{display:block;margin-top:6px}
+.field textarea{resize:vertical}
+.form-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:20px}
+.overlay{
+  position:fixed;inset:0;background:#000b;z-index:50;
+  display:none;align-items:center;justify-content:center;padding:15px
+}
+.overlay.show{display:flex}
+.modal{
+  width:min(760px,100%);max-height:90vh;overflow:auto;
+  border:1px solid var(--border);background:var(--panel);padding:22px
+}
+.modal.small{width:min(440px,100%)}
+.modal-head{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.modal-head h2{color:var(--gold2);font-size:20px}
+.error{color:#f0a3a3}
+.status{color:var(--gold)}
+.google-btn{
+  display:flex;align-items:center;justify-content:center;gap:10px;
+  width:100%;margin-top:12px;background:#f6f4f0;color:#24201c;
+  border:1px solid #d6d0c7;border-radius:4px;padding:11px;font-weight:600
+}
+.google-mark{font:bold 19px Arial;color:#4285f4}
+.full{width:100%}
+.bottom-player{
+  position:fixed;z-index:25;bottom:0;left:0;right:0;
+  display:grid;grid-template-columns:minmax(100px,1fr) auto minmax(120px,1fr);
+  align-items:center;gap:20px;padding:10px 4%;
+  background:#17130ff5;border-top:1px solid var(--border)
+}
+.track-title{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--gold2)}
+.player-controls{display:flex;align-items:center;gap:8px}
+.player-btn{border:1px solid var(--border);background:var(--panel2);padding:5px 12px}
+.player-progress{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted)}
+.progress-bar{height:4px;background:#453a2d;flex:1;cursor:pointer}
+.progress-fill{height:100%;width:0;background:var(--gold)}
+footer{text-align:center;padding:28px 15px 100px;color:var(--muted);font-size:14px}
+.toast{padding:10px 13px;margin:12px 0;border:1px solid var(--border);color:var(--gold2)}
+@media(max-width:850px){
+  .layout{grid-template-columns:1fr}
+  .sidebar{display:none;border-right:0;border-bottom:1px solid var(--border)}
+  .sidebar.open{display:block}
+  .main{padding:22px 16px 100px}
+  .article-grid{grid-template-columns:1fr}
+  .infobox{grid-row:1}
+  .topbar{gap:8px;padding:10px}
+  .brand{font-size:12px;letter-spacing:1px}
+  .bottom-player{grid-template-columns:1fr auto;gap:8px;padding:8px 12px}
+  .player-progress{grid-column:1/-1}
+}
+@media(max-width:480px){
+  .form-grid{grid-template-columns:1fr}
+  .hero{min-height:280px;padding:24px}
+  .card-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+  .card-image,.card-placeholder{height:180px}
+  .card-body{padding:10px}
+  .card h3{font-size:14px}
+  .actions .btn{padding:7px 9px}
+}
+</style>
 </head>
+
 <body>
 <header class="topbar">
-  <button class="icon-btn" id="menuBtn">☰</button>
+  <button class="icon-btn" id="menuBtn" aria-label="Buka navigasi">☰</button>
   <button class="brand" id="brandBtn">THE VELMORIC CODEX</button>
   <div class="search-wrap">
-    <input id="search" class="search" type="search" placeholder="Cari nama, ras, kategori…">
+    <input class="search" id="search" type="search" placeholder="Cari karakter, ras, lokasi...">
   </div>
   <div class="actions">
     <button class="btn" id="btnLogin">Login</button>
     <button class="btn" id="btnLogout" hidden>Logout</button>
-    <button class="btn primary" id="btnAdd" hidden>Tambah</button>
+    <button class="btn primary" id="btnAdd" hidden>+ Entri</button>
   </div>
 </header>
 
 <div class="layout">
   <aside class="sidebar" id="sidebar">
     <div class="side-title">Navigasi</div>
-    <button class="side-link active" id="navHome">Halaman Utama</button>
-    <button class="side-link" id="navAdmin" hidden>Panel Admin</button>
-    <div class="side-title">Daftar Entri</div>
+    <button class="side-link active" id="navHome">⌂ Halaman Utama</button>
+    <button class="side-link" id="navAdmin" hidden>⚙ Panel Admin</button>
+    <div class="side-title">Arsip Dunia</div>
     <div id="charList"></div>
+    <div class="side-title">Kategori</div>
+    <div id="categoryList"></div>
   </aside>
-  <main class="main" id="main"></main>
+  <main class="main" id="main">
+    <p class="status">Memuat arsip Codex...</p>
+  </main>
 </div>
 
-<audio id="bgMusic" crossorigin="anonymous"></audio>
-
 <div class="bottom-player" id="musicPlayer">
-  <div id="trackTitle" class="track-title">Belum ada musik</div>
+  <div class="track-title" id="trackTitle">Belum ada musik</div>
   <div class="player-controls">
-    <button class="player-btn" id="btnPrevTrack">|◀</button>
-    <button class="player-btn" id="btnPlayPause">
-      <span id="iconPlay">▶</span>
-      <span id="iconPause" hidden>Ⅱ</span>
-    </button>
-    <button class="player-btn" id="btnNextTrack">▶|</button>
+    <button class="player-btn" id="btnPrevTrack" aria-label="Musik sebelumnya">|◀</button>
+    <button class="player-btn" id="btnPlayPause" aria-label="Putar atau jeda">▶</button>
+    <button class="player-btn" id="btnNextTrack" aria-label="Musik berikutnya">▶|</button>
   </div>
   <div class="player-progress">
     <span id="timeCurrent">0:00</span>
-    <div class="progress-bar" id="progressBar">
-      <div class="progress-fill" id="progressFill"></div>
-    </div>
+    <div class="progress-bar" id="progressBar"><div class="progress-fill" id="progressFill"></div></div>
     <span id="timeTotal">0:00</span>
   </div>
 </div>
+<audio id="bgMusic" preload="none" crossorigin="anonymous"></audio>
 
-<div class="overlay" id="adminSettingsModal">
+<div class="overlay" id="loginOverlay">
   <section class="modal small">
     <header class="modal-head">
-      <h2>Pengaturan Codex</h2>
-      <button class="icon-btn" id="closeSettings">✕</button>
+      <h2>Masuk ke Codex</h2>
+      <button class="icon-btn" data-close="loginOverlay">✕</button>
     </header>
-    <div class="modal-body">
-      <label class="theme-row">
-        Mode terang
-        <input type="checkbox" id="toggleTheme">
+    <p class="muted">Masuk dengan akun yang diizinkan untuk mengelola arsip.</p>
+    <button class="google-btn" id="btnGoogleLogin"><span class="google-mark">G</span> Lanjutkan dengan Google</button>
+    <div style="text-align:center;margin:18px 0;color:var(--muted)">atau email</div>
+    <form id="loginForm">
+      <label class="field">Email
+        <input id="loginEmail" type="email" autocomplete="username" required>
       </label>
-      <label class="field">
-        Playlist musik (satu URL per baris)
-        <textarea id="inputMusicUrl" rows="5"></textarea>
+      <label class="field">Password
+        <input id="loginPassword" type="password" autocomplete="current-password" required>
       </label>
-      <div class="actions">
-        <button class="btn" id="btnExport">Ekspor JSON</button>
-        <label class="btn">
-          Impor JSON
-          <input id="btnImport" type="file" accept=".json,application/json" hidden>
-        </label>
-      </div>
-      <button class="btn primary full" id="btnSaveSettings">Simpan Pengaturan</button>
-    </div>
+      <button class="btn primary full">Masuk dengan Email</button>
+      <p class="error" id="loginError" role="status"></p>
+    </form>
   </section>
 </div>
 
-<div class="overlay" id="overlay">
+<div class="overlay" id="entryOverlay">
   <section class="modal">
     <header class="modal-head">
-      <h2 id="modalTitle">Tambah Entri</h2>
-      <button class="icon-btn" id="closeModal">✕</button>
+      <h2 id="formTitle">Tambah Entri</h2>
+      <button class="icon-btn" data-close="entryOverlay">✕</button>
     </header>
-    <form id="charForm">
+    <form id="entryForm">
       <div class="form-grid">
         <label class="field">Nama *
-          <input name="nama" required>
+          <input name="nama" required maxlength="120">
         </label>
         <label class="field">Kategori
           <select name="kategori">
-            <option>Karakter</option>
-            <option>Makhluk</option>
-            <option>Lokasi</option>
-            <option>Senjata</option>
-            <option>Sejarah</option>
+            <option>Karakter</option><option>Makhluk</option>
+            <option>Lokasi</option><option>Senjata</option><option>Sejarah</option>
           </select>
         </label>
-        <label class="field">Link Foto
-          <input type="url" name="foto" id="fotoUrlInput">
-          <img id="fotoPreview" hidden alt="Pratinjau foto">
+        <label class="field">URL Foto
+          <input name="foto" type="url" placeholder="https://...">
         </label>
-        <label class="field">Avatar / Emoji
-          <input name="avatar" placeholder="👤">
+        <label class="field">Gelar
+          <input name="gelar">
         </label>
-        <label class="field">Gelar<input name="gelar"></label>
-        <label class="field">Ras / Spesies<input name="ras"></label>
-        <label class="field">Jenis Kelamin<input name="gender"></label>
-        <label class="field">Usia<input name="usia"></label>
-        <label class="field">Tinggi<input name="tinggi"></label>
-        <label class="field">Berat<input name="berat"></label>
-        <label class="field">Asal / Dunia<input name="asal"></label>
-        <label class="field">Afiliasi<input name="afiliasi"></label>
-        <label class="field">Status<input name="status"></label>
-        <label class="field">Elemen / Kelas<input name="kelas"></label>
+        <label class="field">Ras / Spesies
+          <input name="ras">
+        </label>
+        <label class="field">Jenis Kelamin
+          <input name="gender">
+        </label>
+        <label class="field">Usia
+          <input name="usia">
+        </label>
+        <label class="field">Tinggi
+          <input name="tinggi">
+        </label>
+        <label class="field">Asal / Dunia
+          <input name="asal">
+        </label>
+        <label class="field">Afiliasi
+          <input name="afiliasi">
+        </label>
+        <label class="field">Status
+          <input name="status">
+        </label>
+        <label class="field">Elemen / Kelas
+          <input name="kelas">
+        </label>
       </div>
-      <label class="field">Deskripsi<textarea name="deskripsi" rows="2"></textarea></label>
+      <label class="field">Deskripsi<textarea name="deskripsi" rows="3"></textarea></label>
       <label class="field">Kepribadian<textarea name="kepribadian" rows="3"></textarea></label>
       <label class="field">Latar Belakang<textarea name="latar" rows="4"></textarea></label>
       <label class="field">Kemampuan<textarea name="kemampuan" rows="3"></textarea></label>
       <label class="field">Kelemahan<textarea name="kelemahan" rows="3"></textarea></label>
       <div class="form-actions">
-        <button type="button" class="btn" id="cancelBtn">Batal</button>
-        <button class="btn primary" id="submitBtn">Simpan</button>
+        <button class="btn" type="button" data-close="entryOverlay">Batal</button>
+        <button class="btn primary" id="saveEntryBtn">Simpan</button>
       </div>
+      <p id="formError" class="error"></p>
     </form>
   </section>
 </div>
 
-<div class="overlay" id="loginOverlay">
+<div class="overlay" id="settingsOverlay">
   <section class="modal small">
     <header class="modal-head">
-      <h2>Login Admin</h2>
-      <button class="icon-btn" id="closeLogin">✕</button>
+      <h2>Pengaturan Codex</h2>
+      <button class="icon-btn" data-close="settingsOverlay">✕</button>
     </header>
-    <form id="loginForm" class="modal-body">
-      <label class="field">Email
-        <input type="email" id="loginEmail" required autocomplete="username">
-      </label>
-      <label class="field">Password
-        <input type="password" id="loginPassword" required autocomplete="current-password">
-      </label>
-      <button class="btn primary full">Masuk</button>
-      <p id="loginError" class="error"></p>
-    </form>
+    <label class="field">Playlist musik (URL audio, satu per baris)
+      <textarea id="musicUrls" rows="5" placeholder="https://example.com/music.mp3"></textarea>
+    </label>
+    <button class="btn primary full" id="saveSettingsBtn">Simpan Playlist</button>
+    <p class="muted">Gunakan URL audio yang memang boleh kamu akses.</p>
   </section>
 </div>
 
-<footer>© 2026 The Velmoric Codex</footer>
+<footer>© 2026 The Velmoric Codex · Arsip Dunia Velmor</footer>
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
 import {
-  getFirestore, collection, getDocs, addDoc,
-  updateDoc, deleteDoc, doc, getDoc, setDoc
+  getFirestore, collection, getDocs, addDoc, updateDoc, deleteDoc,
+  doc, getDoc, setDoc
 } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 import {
-  getAuth, signInWithEmailAndPassword,
-  onAuthStateChanged, signOut
+  getAuth, signInWithEmailAndPassword, signInWithPopup,
+  GoogleAuthProvider, onAuthStateChanged, signOut
 } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
-const config = {
+/* Gunakan konfigurasi Firebase milik proyekmu. */
+const firebaseConfig = {
   apiKey: "AIzaSyBb4xpWkV2sSARxKGS5UuRJwu8bG-qlkig",
   authDomain: "login-5ab48.firebaseapp.com",
   projectId: "login-5ab48",
@@ -175,26 +380,461 @@ const config = {
   appId: "1:770076903708:web:d493b3660094c084f892d9"
 };
 
-try {
-  const app = initializeApp(config);
-  window.firebaseDB = getFirestore(app);
-  window.firebaseAuth = getAuth(app);
-  window.firebaseFuncs = {
-    collection, getDocs, addDoc, updateDoc,
-    deleteDoc, doc, getDoc, setDoc,
-    signInWithEmailAndPassword, onAuthStateChanged, signOut
-  };
-  window.firebaseReady = true;
-  window.dispatchEvent(new Event("firebase-ready"));
-} catch (e) {
-  console.error("Firebase init gagal", e);
-  window.dispatchEvent(new Event("firebase-error"));
-}
-</script>
+/* GANTI dengan email Google admin milikmu. */
+const ADMIN_EMAILS = ["email-admin-kamu@gmail.com"];
 
-<script src="js/data.js"></script>
-<script src="js/storage.js"></script>
-<script src="js/music-player.js"></script>
-<script src="js/logic.js"></script>
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+const auth = getAuth(app);
+const googleProvider = new GoogleAuthProvider();
+
+const $ = id => document.getElementById(id);
+const main = $("main");
+let currentUser = null;
+let isAdmin = false;
+let entries = [];
+let activeEntry = null;
+let editingEntryId = null;
+let searchTerm = "";
+let activeCategory = "";
+let playlist = [];
+let trackIndex = 0;
+let currentView = "home";
+
+const esc = value => String(value ?? "").replace(/[&<>"']/g, char => ({
+  "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;"
+})[char]);
+
+function notify(message, error = false) {
+  let el = $("notice");
+  if (!el) {
+    el = document.createElement("div");
+    el.id = "notice";
+    el.className = "toast";
+    main.prepend(el);
+  }
+  el.textContent = message;
+  el.style.color = error ? "#f0a3a3" : "var(--gold2)";
+}
+
+function showModal(id) { $(id).classList.add("show"); }
+function hideModal(id) { $(id).classList.remove("show"); }
+
+document.querySelectorAll("[data-close]").forEach(button => {
+  button.addEventListener("click", () => hideModal(button.dataset.close));
+});
+document.querySelectorAll(".overlay").forEach(overlay => {
+  overlay.addEventListener("click", event => {
+    if (event.target === overlay) overlay.classList.remove("show");
+  });
+});
+document.addEventListener("keydown", event => {
+  if (event.key === "Escape") {
+    document.querySelectorAll(".overlay.show").forEach(el => el.classList.remove("show"));
+  }
+});
+
+function visibleEntries() {
+  return entries.filter(entry => {
+    const text = Object.values(entry).join(" ").toLowerCase();
+    return (!searchTerm || text.includes(searchTerm)) &&
+      (!activeCategory || entry.kategori === activeCategory);
+  }).sort((a, b) => String(a.nama || "").localeCompare(String(b.nama || "")));
+}
+
+function imageMarkup(entry, className = "card-image") {
+  if (entry.foto && /^https?:\/\//i.test(entry.foto)) {
+    return `<img class="${className}" loading="lazy" src="${esc(entry.foto)}" alt="${esc(entry.nama)}" onerror="this.outerHTML='<div class=\\'card-placeholder\\'>VC</div>'">`;
+  }
+  return `<div class="card-placeholder">VC</div>`;
+}
+
+function cardMarkup(entry) {
+  return `
+    <article class="card" tabindex="0" role="button" data-open="${esc(entry.id)}">
+      ${imageMarkup(entry)}
+      <div class="card-body">
+        <div class="card-category">${esc(entry.kategori || "Arsip")}</div>
+        <h3>${esc(entry.nama)}</h3>
+        <p>${esc(entry.gelar || entry.ras || entry.asal || "Catatan dari dunia Velmor")}</p>
+      </div>
+    </article>`;
+}
+
+function renderSidebar() {
+  const sorted = [...entries].sort((a,b) => String(a.nama).localeCompare(String(b.nama)));
+  $("charList").innerHTML = sorted.slice(0,40).map(entry =>
+    `<button class="side-link" data-open="${esc(entry.id)}">${esc(entry.nama)}</button>`
+  ).join("") || `<p class="muted">Belum ada entri.</p>`;
+
+  const categories = [...new Set(entries.map(e => e.kategori).filter(Boolean))];
+  $("categoryList").innerHTML = categories.map(category =>
+    `<button class="side-link ${activeCategory === category ? "active" : ""}" data-category="${esc(category)}">${esc(category)}</button>`
+  ).join("");
+}
+
+function renderHome() {
+  const list = visibleEntries();
+  main.innerHTML = `
+    <section class="hero">
+      <div class="eyebrow">Arsip Dunia Velmor</div>
+      <h1>The Velmoric Codex</h1>
+      <p>Di balik setiap kerajaan, makhluk, dan relik, tersimpan kisah yang nyaris dilupakan. Jelajahi arsip dunia Velmor.</p>
+      <div class="hero-buttons">
+        <button class="btn primary" id="exploreBtn">Jelajahi Arsip</button>
+        ${isAdmin ? '<button class="btn" id="heroAddBtn">Tambah Entri</button>' : ""}
+      </div>
+    </section>
+    <div class="section-heading">
+      <h2>${activeCategory ? esc(activeCategory) : searchTerm ? "Hasil Pencarian" : "Arsip Codex"}</h2>
+      <span class="muted">${list.length} entri</span>
+    </div>
+    <div class="card-grid">${list.map(cardMarkup).join("") || '<div class="empty">Arsip belum tersedia atau tidak ada hasil yang cocok.</div>'}</div>
+  `;
+  $("exploreBtn").onclick = () => document.querySelector(".section-heading").scrollIntoView({behavior:"smooth"});
+  $("heroAddBtn")?.addEventListener("click", () => openEntryForm());
+}
+
+function renderArticle(entry) {
+  const fields = [
+    ["Kategori","kategori"],["Gelar","gelar"],["Ras / Spesies","ras"],
+    ["Jenis Kelamin","gender"],["Usia","usia"],["Tinggi","tinggi"],
+    ["Asal / Dunia","asal"],["Afiliasi","afiliasi"],["Status","status"],
+    ["Elemen / Kelas","kelas"]
+  ];
+  const sections = [
+    ["Deskripsi","deskripsi"],["Kepribadian","kepribadian"],
+    ["Latar Belakang","latar"],["Kemampuan","kemampuan"],["Kelemahan","kelemahan"]
+  ];
+  main.innerHTML = `
+    <div class="article-top">
+      <button class="btn" id="backBtn">← Kembali ke Arsip</button>
+      <div class="eyebrow" style="margin-top:22px">${esc(entry.kategori || "Arsip Codex")}</div>
+      <h1 class="page-title">${esc(entry.nama)}</h1>
+      <p class="muted">${esc(entry.gelar || "Catatan Dunia Velmor")}</p>
+    </div>
+    <div class="article-grid">
+      <article class="article-content">
+        ${sections.map(([label,key]) => entry[key] ? `
+          <section><h2>${label}</h2><p>${esc(entry[key]).replace(/\n/g,"<br>")}</p></section>
+        ` : "").join("")}
+      </article>
+      <aside class="infobox">
+        <h2>${esc(entry.nama)}</h2>
+        ${imageMarkup(entry,"")}
+        <table>${fields.filter(([,key]) => entry[key]).map(([label,key]) =>
+          `<tr><th>${label}</th><td>${esc(entry[key])}</td></tr>`
+        ).join("")}</table>
+        ${isAdmin ? `<div class="infobox-actions">
+          <button class="btn" id="editEntryBtn">Edit</button>
+          <button class="btn danger" id="deleteEntryBtn">Hapus</button>
+        </div>` : ""}
+      </aside>
+    </div>
+  `;
+  $("backBtn").onclick = () => { activeEntry = null; currentView = "home"; render(); };
+  $("editEntryBtn")?.addEventListener("click", () => openEntryForm(entry));
+  $("deleteEntryBtn")?.addEventListener("click", () => deleteEntry(entry.id));
+}
+
+function renderAdmin() {
+  main.innerHTML = `
+    <div class="eyebrow">Administrasi</div>
+    <h1 class="page-title">Panel Admin</h1>
+    <p class="muted">Kelola entri dan playlist musik Codex.</p>
+    <div class="hero-buttons">
+      <button class="btn primary" id="adminAddBtn">+ Tambah Entri</button>
+      <button class="btn" id="settingsBtn">Playlist Musik</button>
+      <button class="btn" id="exportBtn">Ekspor JSON</button>
+      <button class="btn" id="importTriggerBtn">Impor JSON</button>
+      <input type="file" id="importFile" accept=".json,application/json" hidden>
+    </div>
+    <div class="section-heading"><h2>Kelola Arsip</h2><span class="muted">${entries.length} entri</span></div>
+    <div class="card-grid">${entries.map(cardMarkup).join("") || '<div class="empty">Belum ada entri.</div>'}</div>
+  `;
+  $("adminAddBtn").onclick = () => openEntryForm();
+  $("settingsBtn").onclick = openSettings;
+  $("exportBtn").onclick = exportJSON;
+  $("importTriggerBtn").onclick = () => $("importFile").click();
+  $("importFile").onchange = importJSON;
+}
+
+function render() {
+  $("btnLogin").hidden = !!currentUser;
+  $("btnLogout").hidden = !currentUser;
+  $("btnAdd").hidden = !isAdmin;
+  $("navAdmin").hidden = !isAdmin;
+  $("navHome").classList.toggle("active", currentView === "home");
+  $("navAdmin").classList.toggle("active", currentView === "admin");
+
+  renderSidebar();
+
+  if (currentView === "article" && activeEntry) renderArticle(activeEntry);
+  else if (currentView === "admin" && isAdmin) renderAdmin();
+  else {
+    currentView = "home";
+    renderHome();
+  }
+}
+
+async function loadEntries() {
+  try {
+    const snapshot = await getDocs(collection(db,"karakter"));
+    entries = snapshot.docs.map(item => ({id:item.id,...item.data()}));
+    render();
+  } catch (error) {
+    console.error(error);
+    notify("Gagal membaca Firestore. Periksa koneksi dan Firestore Security Rules.",true);
+  }
+}
+
+function openEntryForm(entry = null) {
+  if (!isAdmin) return;
+  editingEntryId = entry?.id || null;
+  $("entryForm").reset();
+  $("formTitle").textContent = entry ? "Edit Entri" : "Tambah Entri";
+  $("formError").textContent = "";
+  if (entry) {
+    for (const [key,value] of Object.entries(entry)) {
+      const field = $("entryForm").elements.namedItem(key);
+      if (field && key !== "id") field.value = value ?? "";
+    }
+  }
+  showModal("entryOverlay");
+}
+
+$("entryForm").addEventListener("submit", async event => {
+  event.preventDefault();
+  if (!isAdmin) return;
+
+  const button = $("saveEntryBtn");
+  button.disabled = true;
+  $("formError").textContent = "";
+
+  try {
+    const data = Object.fromEntries(new FormData(event.currentTarget).entries());
+    data.nama = String(data.nama || "").trim();
+    if (!data.nama) throw new Error("Nama wajib diisi.");
+
+    if (editingEntryId) {
+      await updateDoc(doc(db,"karakter",editingEntryId),data);
+    } else {
+      await addDoc(collection(db,"karakter"),data);
+    }
+
+    hideModal("entryOverlay");
+    await loadEntries();
+    notify("Entri berhasil disimpan.");
+  } catch (error) {
+    console.error(error);
+    $("formError").textContent = error.message || "Gagal menyimpan entri.";
+  } finally {
+    button.disabled = false;
+  }
+});
+
+async function deleteEntry(id) {
+  if (!isAdmin || !confirm("Hapus entri ini secara permanen?")) return;
+  try {
+    await deleteDoc(doc(db,"karakter",id));
+    activeEntry = null;
+    currentView = "home";
+    await loadEntries();
+    notify("Entri telah dihapus.");
+  } catch (error) {
+    console.error(error);
+    notify("Gagal menghapus entri. Periksa Firestore Rules.",true);
+  }
+}
+
+async function loadSettings() {
+  try {
+    const snapshot = await getDoc(doc(db,"pengaturan","global"));
+    playlist = snapshot.exists() ? (snapshot.data().musicUrls || []) : [];
+    setupPlaylist();
+  } catch (error) {
+    console.warn("Playlist belum tersedia",error);
+  }
+}
+
+function openSettings() {
+  if (!isAdmin) return;
+  $("musicUrls").value = playlist.join("\n");
+  showModal("settingsOverlay");
+}
+
+$("saveSettingsBtn").onclick = async () => {
+  if (!isAdmin) return;
+  const urls = $("musicUrls").value.split(/\r?\n/).map(x => x.trim()).filter(Boolean);
+  if (urls.some(url => !/^https?:\/\//i.test(url))) {
+    alert("Setiap alamat playlist harus berupa URL http atau https.");
+    return;
+  }
+  try {
+    await setDoc(doc(db,"pengaturan","global"),{musicUrls:urls},{merge:true});
+    playlist = urls;
+    trackIndex = 0;
+    setupPlaylist();
+    hideModal("settingsOverlay");
+    notify("Playlist berhasil disimpan.");
+  } catch (error) {
+    console.error(error);
+    alert("Gagal menyimpan playlist. Periksa Firestore Rules.");
+  }
+};
+
+function exportJSON() {
+  if (!isAdmin) return;
+  const blob = new Blob([JSON.stringify(entries,null,2)],{type:"application/json"});
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = "velmoric-codex.json";
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
+async function importJSON(event) {
+  if (!isAdmin) return;
+  const file = event.target.files?.[0];
+  if (!file) return;
+  try {
+    const data = JSON.parse(await file.text());
+    if (!Array.isArray(data)) throw new Error("File JSON harus berisi array entri.");
+    if (!confirm(`Impor ${data.length} entri? Data akan ditambahkan ke Firestore.`)) return;
+    for (const item of data) {
+      const {id,...fields} = item;
+      if (fields.nama) await addDoc(collection(db,"karakter"),fields);
+    }
+    await loadEntries();
+    notify("Impor selesai.");
+  } catch (error) {
+    alert(error.message || "Gagal membaca file JSON.");
+  } finally {
+    event.target.value = "";
+  }
+}
+
+$("btnLogin").onclick = () => showModal("loginOverlay");
+
+$("btnGoogleLogin").onclick = async () => {
+  $("loginError").textContent = "";
+  try {
+    await signInWithPopup(auth,googleProvider);
+    hideModal("loginOverlay");
+  } catch (error) {
+    console.error(error);
+    $("loginError").textContent = "Login Google gagal. Periksa konfigurasi Firebase dan Authorized domains.";
+  }
+};
+
+$("loginForm").addEventListener("submit",async event => {
+  event.preventDefault();
+  $("loginError").textContent = "";
+  try {
+    await signInWithEmailAndPassword(auth,$("loginEmail").value.trim(),$("loginPassword").value);
+    hideModal("loginOverlay");
+  } catch (error) {
+    console.error(error);
+    $("loginError").textContent = "Login gagal. Periksa email dan password.";
+  }
+});
+
+$("btnLogout").onclick = () => signOut(auth);
+$("btnAdd").onclick = () => openEntryForm();
+$("navHome").onclick = () => { currentView = "home"; activeEntry = null; render(); };
+$("navAdmin").onclick = () => { if (isAdmin) { currentView = "admin"; render(); } };
+$("menuBtn").onclick = () => $("sidebar").classList.toggle("open");
+$("brandBtn").onclick = () => {
+  currentView = "home"; activeEntry = null; searchTerm = ""; activeCategory = "";
+  $("search").value = ""; render();
+};
+$("search").addEventListener("input",event => {
+  searchTerm = event.target.value.trim().toLowerCase();
+  currentView = "home";
+  render();
+});
+
+document.addEventListener("click",event => {
+  const open = event.target.closest("[data-open]");
+  if (open) {
+    const entry = entries.find(item => item.id === open.dataset.open);
+    if (entry) { activeEntry = entry; currentView = "article"; render(); window.scrollTo(0,0); }
+    $("sidebar").classList.remove("open");
+    return;
+  }
+  const category = event.target.closest("[data-category]");
+  if (category) {
+    activeCategory = activeCategory === category.dataset.category ? "" : category.dataset.category;
+    currentView = "home";
+    render();
+  }
+});
+document.addEventListener("keydown",event => {
+  const card = event.target.closest(".card");
+  if (card && (event.key === "Enter" || event.key === " ")) {
+    event.preventDefault();
+    const entry = entries.find(item => item.id === card.dataset.open);
+    if (entry) { activeEntry = entry; currentView = "article"; render(); }
+  }
+});
+
+const audio = $("bgMusic");
+function fmt(seconds) {
+  if (!Number.isFinite(seconds)) return "0:00";
+  return `${Math.floor(seconds/60)}:${String(Math.floor(seconds%60)).padStart(2,"0")}`;
+}
+function setupPlaylist() {
+  if (!playlist.length) {
+    audio.pause(); audio.removeAttribute("src"); audio.load();
+    $("trackTitle").textContent = "Playlist belum diatur";
+    $("btnPlayPause").textContent = "▶";
+    $("progressFill").style.width = "0%";
+    return;
+  }
+  trackIndex = (trackIndex + playlist.length) % playlist.length;
+  audio.src = playlist[trackIndex];
+  $("trackTitle").textContent = playlist[trackIndex].split("/").pop().split("?")[0] || `Track ${trackIndex+1}`;
+  $("btnPlayPause").textContent = "▶";
+}
+async function playTrack() {
+  if (!playlist.length) { notify("Playlist musik belum diatur."); return; }
+  if (!audio.src) setupPlaylist();
+  try { await audio.play(); $("btnPlayPause").textContent = "Ⅱ"; }
+  catch { notify("Musik tidak bisa diputar. Coba tekan tombol play lagi.",true); }
+}
+$("btnPlayPause").onclick = () => audio.paused ? playTrack() : audio.pause();
+$("btnNextTrack").onclick = () => { trackIndex++; setupPlaylist(); playTrack(); };
+$("btnPrevTrack").onclick = () => { trackIndex--; setupPlaylist(); playTrack(); };
+audio.addEventListener("play",() => $("btnPlayPause").textContent = "Ⅱ");
+audio.addEventListener("pause",() => $("btnPlayPause").textContent = "▶");
+audio.addEventListener("ended",() => { trackIndex++; setupPlaylist(); playTrack(); });
+audio.addEventListener("timeupdate",() => {
+  $("timeCurrent").textContent = fmt(audio.currentTime);
+  $("timeTotal").textContent = fmt(audio.duration);
+  $("progressFill").style.width = audio.duration ? `${audio.currentTime/audio.duration*100}%` : "0%";
+});
+$("progressBar").onclick = event => {
+  if (audio.duration) {
+    const rect = event.currentTarget.getBoundingClientRect();
+    audio.currentTime = Math.max(0,Math.min(1,(event.clientX-rect.left)/rect.width))*audio.duration;
+  }
+};
+
+onAuthStateChanged(auth,async user => {
+  currentUser = user;
+  isAdmin = !!user && ADMIN_EMAILS.map(x => x.toLowerCase()).includes((user.email || "").toLowerCase());
+  $("btnLogout").hidden = !user;
+  $("btnLogin").hidden = !!user;
+  $("btnAdd").hidden = !isAdmin;
+  $("navAdmin").hidden = !isAdmin;
+  if (user && !isAdmin) {
+    notify("Akun berhasil masuk, tetapi tidak memiliki akses admin.");
+  }
+  render();
+  await loadEntries();
+  await loadSettings();
+});
+</script>
 </body>
 </html>
