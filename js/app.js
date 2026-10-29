@@ -5,7 +5,8 @@ let characters = [];
 let currentId  = null;
 let editingId  = null;
 let query      = '';
-let isAdmin    = false; // Status login
+let isAdmin    = false;
+let currentView = 'home'; // 'home', 'article', atau 'admin'
 
 // Watermark Tersembunyi
 const WATERMARK = "\u200B\u200C\u200B\u200C\u200C\u200B\u200B\u200C\u200B\u200C\u200C\u200C"; 
@@ -26,7 +27,6 @@ async function muatDataDariFirebase() {
     render(); 
   } catch (error) {
     console.error("Gagal memuat data:", error);
-    mainEl.innerHTML = `<div class="empty-state" style="color:#ff6b6b;">Gagal memuat data dari server. Periksa koneksi atau aturan Firebase.</div>`;
   }
 }
 
@@ -36,7 +36,6 @@ async function simpanDataKeFirebase(data) {
     await addDoc(collection(window.firebaseDB, "karakter"), data);
     muatDataDariFirebase();
   } catch (error) {
-    console.error("Gagal menyimpan:", error);
     alert("Gagal menyimpan data. Pastikan Anda sudah login.");
   }
 }
@@ -73,14 +72,13 @@ async function uploadKePicrd(file) {
     body: formData
   });
   
-  if (!response.ok) throw new Error('Gagal mengunggah gambar ke Picrd');
-  
+  if (!response.ok) throw new Error('Gagal mengunggah gambar');
   const data = await response.json();
-  return data.image_url; // Mengembalikan link gambar
+  return data.image_url;
 }
 
 /* =========================================================
-   UTILITAS & RENDER
+   UTILITAS & RENDER UTAMA
    ========================================================= */
 function getChar(id) { return characters.find(c => c.id === id); }
 
@@ -100,39 +98,51 @@ function renderAvatar(c) {
 
 function render() {
   if (currentId && !getChar(currentId)) currentId = null;
-  renderSidebar();
-  const c = currentId ? getChar(currentId) : null;
   
-  // Sembunyikan tombol tambah & edit jika bukan admin
-  document.getElementById('btnAdd').style.display = isAdmin ? 'inline-flex' : 'none';
-  document.getElementById('navAdd').style.display = isAdmin ? 'flex' : 'none';
+  // Tampilkan/Sembunyikan menu berdasarkan status login
+  const adminElements = ['btnAdd', 'navAdd', 'navAdmin'];
+  adminElements.forEach(id => {
+    document.getElementById(id).style.display = isAdmin ? (id === 'btnAdd' ? 'inline-flex' : 'flex') : 'none';
+  });
 
-  if (c) renderChar(c);
-  else renderHome();
+  renderSidebar();
+
+  // Tentukan view yang akan dirender
+  if (currentView === 'admin' && isAdmin) {
+    renderAdminDashboard();
+  } else if (currentId && currentView === 'article') {
+    renderChar(getChar(currentId));
+  } else {
+    currentView = 'home';
+    renderHome();
+  }
 }
 
 function renderSidebar() {
   const items = filterList(characters);
   charListEl.innerHTML = items.length
     ? items.map(c => `
-        <div class="side-link ${c.id === currentId ? 'active' : ''}" data-open="${c.id}">
+        <div class="side-link ${c.id === currentId && currentView === 'article' ? 'active' : ''}" data-open="${c.id}">
           <span class="side-emoji">${renderAvatar(c)}</span>
           <span class="side-name">${esc(c.nama)}</span>
         </div>`).join('')
-    : `<div class="side-empty">${query ? 'Tidak ditemukan' : 'Codex kosong'}</div>`;
+    : `<div class="side-empty">Codex kosong</div>`;
 }
 
+/* =========================================================
+   VIEW: HALAMAN UTAMA
+   ========================================================= */
 function renderHome() {
   const list = filterList(characters);
   mainEl.innerHTML = `
     <div class="home-hero">
       <h1>The Velmoric Codex</h1>
-      <p>Arsip hidup tentang benua, ras, karakter, dan segala yang ada di antaranya. Tambahkan entri, lengkapi detailnya, dan jelajahi semuanya di satu tempat.</p>
-      ${isAdmin ? `<button class="btn btn-primary" id="homeAdd">＋ Tambah Entri Baru</button>` : `<span style="font-size:13px; color:var(--text-muted); font-style:italic;">Anda dalam mode Read-Only (Pengunjung)</span>`}
+      <p>Arsip hidup tentang benua, ras, karakter, dan segala yang ada di antaranya.</p>
+      ${isAdmin ? `<button class="btn btn-primary" id="homeAdd">＋ Tambah Entri Baru</button>` : ``}
     </div>
     <div class="section-head">
       <h2>Daftar Entri</h2>
-      <span class="count">${list.length} entri${query ? ' (hasil pencarian)' : ''}</span>
+      <span class="count">${list.length} entri</span>
     </div>
     ${list.length
       ? `<div class="card-grid">${list.map(cardHTML).join('')}</div>`
@@ -145,12 +155,89 @@ function cardHTML(c) {
     <div class="card-avatar">${renderAvatar(c)}</div>
     <div class="card-body">
       <h3>${esc(c.nama)}</h3>
-      <div class="card-meta">${esc(c.ras || 'Ras belum diisi')}${c.gelar ? ' · ' + esc(c.gelar) : ''}</div>
+      <div class="card-meta">${esc(c.ras || 'Ras belum diisi')}</div>
       <p>${esc(potong(c.deskripsi || 'Belum ada deskripsi.', 100))}</p>
     </div>
   </article>`;
 }
 
+/* =========================================================
+   VIEW: PANEL ADMIN (BARU)
+   ========================================================= */
+function renderAdminDashboard() {
+  // Hitung statistik
+  const totalChar = characters.length;
+  const totalFoto = characters.filter(c => c.foto).length;
+  const totalRas = new Set(characters.map(c => c.ras).filter(Boolean)).size;
+
+  mainEl.innerHTML = `
+    <h1 class="page-title">Panel Admin</h1>
+    <div class="page-sub">Selamat datang, Administrator. Kelola isi Codex dari sini.</div>
+
+    <!-- Kartu Statistik -->
+    <div class="card-grid" style="margin-bottom: 30px;">
+      <div class="card" style="cursor:default; border-left: 3px solid var(--accent-gold);">
+        <div class="card-body">
+          <div class="card-meta">Total Entri Karakter</div>
+          <h3 style="font-size: 28px; margin:0;">${totalChar}</h3>
+        </div>
+      </div>
+      <div class="card" style="cursor:default; border-left: 3px solid var(--accent-brown);">
+        <div class="card-body">
+          <div class="card-meta">Entri dengan Foto</div>
+          <h3 style="font-size: 28px; margin:0;">${totalFoto}</h3>
+        </div>
+      </div>
+      <div class="card" style="cursor:default; border-left: 3px solid #5a8f7b;">
+        <div class="card-body">
+          <div class="card-meta">Ras / Spesies Unik</div>
+          <h3 style="font-size: 28px; margin:0;">${totalRas}</h3>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-head">
+      <h2>Kelola Entri</h2>
+      <button class="btn btn-primary btn-sm" id="adminAddBtn" style="margin-left:auto;">+ Tambah Baru</button>
+    </div>
+
+    <!-- Tabel Kelola Karakter -->
+    <div style="background: var(--bg-darker); border: 1px solid var(--border-color); border-radius: 4px; overflow-x: auto;">
+      <table style="width: 100%; border-collapse: collapse; text-align: left;">
+        <thead>
+          <tr style="background: var(--bg-dark); border-bottom: 1px solid var(--border-color);">
+            <th style="padding: 12px; font-family: 'Cinzel';">Nama</th>
+            <th style="padding: 12px; font-family: 'Cinzel';">Ras</th>
+            <th style="padding: 12px; font-family: 'Cinzel';">Status</th>
+            <th style="padding: 12px; font-family: 'Cinzel'; text-align:right;">Aksi</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${characters.length ? characters.map(c => `
+            <tr style="border-bottom: 1px solid var(--border-color);">
+              <td style="padding: 12px; display:flex; align-items:center; gap:10px;">
+                <div style="width:30px; height:30px; border-radius:4px; overflow:hidden; display:flex; align-items:center; justify-content:center; background:var(--bg-dark);">
+                  ${renderAvatar(c)}
+                </div>
+                <strong>${esc(c.nama)}</strong>
+              </td>
+              <td style="padding: 12px; color: var(--text-muted);">${esc(c.ras || '-')}</td>
+              <td style="padding: 12px; color: var(--accent-gold);">${esc(c.status || '-')}</td>
+              <td style="padding: 12px; text-align:right;">
+                <button class="btn btn-sm btn-outline" data-edit="${c.id}">✏️</button>
+                <button class="btn btn-sm btn-danger" data-del="${c.id}">🗑️</button>
+              </td>
+            </tr>
+          `).join('') : `<tr><td colspan="4" style="padding:20px; text-align:center;">Belum ada data.</td></tr>`}
+        </tbody>
+      </table>
+    </div>
+  `;
+}
+
+/* =========================================================
+   VIEW: ARTIKEL KARAKTER
+   ========================================================= */
 function renderChar(c) {
   const infoRows = [
     ['Gelar', c.gelar], ['Ras / Spesies', c.ras], ['Jenis Kelamin', c.gender],
@@ -264,7 +351,7 @@ form.addEventListener('submit', async (e) => {
       submitBtn.textContent = '💾 Simpan';
       submitBtn.disabled = false;
     } catch (error) {
-      alert('Gagal upload foto: ' + error.message + '\nCoba gunakan gambar yang lebih kecil atau koneksi lain.');
+      alert('Gagal upload foto: ' + error.message);
       submitBtn.textContent = '💾 Simpan';
       submitBtn.disabled = false;
       return;
@@ -279,7 +366,6 @@ form.addEventListener('submit', async (e) => {
   } else {
     await simpanDataKeFirebase({ ...data, dibuat: Date.now() });
   }
-  window.scrollTo({ top: 0, behavior: 'smooth' });
 });
 
 function hapusKarakter(id) {
@@ -288,6 +374,7 @@ function hapusKarakter(id) {
   if (!c) return;
   if (!confirm(`Hapus entri "${c.nama}"? Tindakan ini tidak bisa dibatalkan.`)) return;
   hapusDataDariFirebase(id);
+  if(currentId === id) { currentId = null; currentView = 'admin'; }
 }
 
 /* =========================================================
@@ -323,13 +410,17 @@ loginForm.addEventListener('submit', async (e) => {
 document.getElementById('btnLogout').addEventListener('click', async () => {
   const { signOut } = window.firebaseFuncs;
   await signOut(window.firebaseAuth);
+  currentView = 'home';
+  currentId = null;
+  render();
 });
 
 /* =========================================================
    EVENT LISTENER UI
    ========================================================= */
-document.getElementById('brandBtn').addEventListener('click', () => { currentId = null; query = ''; document.getElementById('search').value = ''; render(); window.scrollTo({ top: 0 }); });
-document.getElementById('navHome').addEventListener('click', () => { currentId = null; render(); tutupSidebar(); });
+document.getElementById('brandBtn').addEventListener('click', () => { currentId = null; currentView = 'home'; query = ''; document.getElementById('search').value = ''; render(); window.scrollTo({ top: 0 }); });
+document.getElementById('navHome').addEventListener('click', () => { currentView = 'home'; currentId = null; render(); tutupSidebar(); window.scrollTo({ top: 0 }); });
+document.getElementById('navAdmin').addEventListener('click', () => { currentView = 'admin'; currentId = null; render(); tutupSidebar(); window.scrollTo({ top: 0 }); });
 document.getElementById('navAdd').addEventListener('click', () => { openModal(); tutupSidebar(); });
 document.getElementById('btnAdd').addEventListener('click', () => openModal());
 document.getElementById('closeModal').addEventListener('click', closeModal);
@@ -338,7 +429,7 @@ overlay.addEventListener('click', e => { if (e.target === overlay) closeModal();
 
 charListEl.addEventListener('click', e => {
   const el = e.target.closest('[data-open]');
-  if (el) { currentId = el.dataset.open; render(); tutupSidebar(); window.scrollTo({ top: 0 }); }
+  if (el) { currentId = el.dataset.open; currentView = 'article'; render(); tutupSidebar(); window.scrollTo({ top: 0 }); }
 });
 
 mainEl.addEventListener('click', e => {
@@ -350,8 +441,10 @@ mainEl.addEventListener('click', e => {
     if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
     return;
   }
-  if (e.target.closest('[data-open]')) { currentId = e.target.closest('[data-open]').dataset.open; render(); window.scrollTo({ top: 0 }); return; }
-  if (e.target.closest('#homeAdd')) openModal();
+  if (e.target.closest('[data-open]')) { currentId = e.target.closest('[data-open]').dataset.open; currentView = 'article'; render(); window.scrollTo({ top: 0 }); return; }
+  
+  // Tombol di dalam halaman Home / Admin
+  if (e.target.closest('#homeAdd') || e.target.closest('#adminAddBtn')) openModal();
 });
 
 document.getElementById('search').addEventListener('input', e => { query = e.target.value.toLowerCase().trim(); render(); });
@@ -364,7 +457,7 @@ document.addEventListener('click', e => {
 });
 
 /* =========================================================
-   ANTI-COPY PROTECTION
+   ANTI-COPY & INISIALISASI AUTH
    ========================================================= */
 document.addEventListener('contextmenu', e => { if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return; e.preventDefault(); });
 document.addEventListener('keydown', e => {
@@ -373,9 +466,6 @@ document.addEventListener('keydown', e => {
   if (e.ctrlKey && (e.key === 'u' || e.key === 'U')) e.preventDefault();
 });
 
-/* =========================================================
-   INISIALISASI & CEK AUTH STATUS
-   ========================================================= */
 window.addEventListener('load', () => {
   setTimeout(() => {
     if (window.firebaseReady) {
@@ -383,21 +473,19 @@ window.addEventListener('load', () => {
       
       onAuthStateChanged(window.firebaseAuth, (user) => {
         if (user) {
-          // Jika login sukses
           isAdmin = true;
           document.getElementById('btnLogout').style.display = 'inline-flex';
           document.getElementById('btnLogin').style.display = 'none';
         } else {
-          // Jika belum login / logout
           isAdmin = false;
           document.getElementById('btnLogin').style.display = 'inline-flex';
           document.getElementById('btnLogout').style.display = 'none';
+          currentView = 'home'; // Balik ke home jika logout
         }
-        render(); // Render ulang untuk nampilin/sembunyiin tombol
+        render();
       });
 
-      // Muat data karakter pertama kali
       muatDataDariFirebase();
     }
-  }, 800); // Delay sedikit memastikan module firebase di HTML selesai loading
+  }, 800);
 });
