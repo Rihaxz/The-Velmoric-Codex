@@ -1,128 +1,228 @@
+/* =========================================================
+   THE VELMORIC CODEX
+   music-player.js
+   Pemutar musik latar. Berdiri sendiri; playlist diatur lewat
+   MusicPlayer.setPlaylist(urls) dari storage.js.
+========================================================= */
+
 (() => {
-  const audio = document.getElementById("bgMusic");
-  const player = document.getElementById("musicPlayer");
-  const title = document.getElementById("trackTitle");
-  const playButton = document.getElementById("btnPlayPause");
-  const progress = document.getElementById("progressBar");
-  const fill = document.getElementById("progressFill");
+  "use strict";
+
+  const $ = id => document.getElementById(id);
+
+  const audio = $("bgMusic");
+  const player = $("musicPlayer");
+  const title = $("trackTitle");
+  const playButton = $("btnPlayPause");
+  const prevButton = $("btnPrevTrack");
+  const nextButton = $("btnNextTrack");
+  const progress = $("progressBar");
+  const fill = $("progressFill");
+  const iconPlay = $("iconPlay");
+  const iconPause = $("iconPause");
+  const timeCurrent = $("timeCurrent");
+  const timeTotal = $("timeTotal");
+
+  // Jika markup pemutar tidak ada, jangan membuat halaman error.
+  if (
+    !audio || !player || !title || !playButton ||
+    !prevButton || !nextButton || !progress || !fill
+  ) {
+    console.warn("[Velmoric Music] Markup pemutar tidak lengkap.");
+
+    window.MusicPlayer = { setPlaylist() {} };
+
+    return;
+  }
+
+  let playlist = [];
+  let index = 0;
+  let userPaused = false;
+  let gestureArmed = false;
+
+  // =======================================================
+  // HELPER
+  // =======================================================
 
   function formatTime(value) {
-    return Number.isFinite(value) && value >= 0
-      ? `${Math.floor(value / 60)}:${String(
-          Math.floor(value % 60)
-        ).padStart(2, "0")}`
-      : "0:00";
+    if (!Number.isFinite(value) || value < 0) return "0:00";
+
+    const minutes = Math.floor(value / 60);
+    const seconds = String(Math.floor(value % 60)).padStart(2, "0");
+
+    return `${minutes}:${seconds}`;
+  }
+
+  function trackName(url) {
+    try {
+      const last = url.split("?")[0].split("/").pop();
+
+      return decodeURIComponent(last).replace(/\.[a-z0-9]{2,4}$/i, "")
+        || "Lagu tanpa judul";
+
+    } catch {
+      return "Lagu tanpa judul";
+    }
   }
 
   function updatePlayer() {
     const playing = !audio.paused;
 
-    document.getElementById("iconPlay").hidden = playing;
-    document.getElementById("iconPause").hidden = !playing;
+    if (iconPlay) iconPlay.hidden = playing;
+    if (iconPause) iconPause.hidden = !playing;
 
-    document.getElementById("timeCurrent").textContent =
-      formatTime(audio.currentTime);
+    if (timeCurrent) timeCurrent.textContent = formatTime(audio.currentTime);
+    if (timeTotal) timeTotal.textContent = formatTime(audio.duration);
 
-    document.getElementById("timeTotal").textContent =
-      formatTime(audio.duration);
+    const percent =
+      audio.duration > 0
+        ? (audio.currentTime / audio.duration) * 100
+        : 0;
 
-    const percent = audio.duration > 0
-      ? (audio.currentTime / audio.duration) * 100
-      : 0;
-
-    fill.style.width = percent + "%";
+    fill.style.width = `${percent}%`;
   }
 
-  function loadTrack(index, autoplay = true) {
-    if (!musicPlaylist.length) {
-      title.textContent = "Belum ada musik";
-      player.classList.remove("active");
-      return false;
-    }
+  function showPlayer(visible) {
+    player.classList.toggle("active", visible);
+    document.body.classList.toggle("has-player", visible);
+  }
 
-    currentTrackIndex =
-      (index + musicPlaylist.length) % musicPlaylist.length;
+  // =======================================================
+  // MEMUAT LAGU
+  // =======================================================
 
-    const track = musicPlaylist[currentTrackIndex];
-    const url = typeof track === "string"
-      ? track
-      : track.url || track.src;
+  function loadTrack(newIndex, autoplay = true) {
+    if (!playlist.length) return false;
 
-    if (!url) return false;
+    index = (newIndex + playlist.length) % playlist.length;
 
-    title.textContent =
-      typeof track === "object" && track.title
-        ? track.title
-        : decodeURIComponent(
-            url.split("/").pop().split("?")[0]
-          );
+    const url = playlist[index];
 
-    if (audio.src !== new URL(url, location.href).href) {
-      audio.src = url;
-      audio.load();
-    }
+    title.textContent = trackName(url);
+
+    audio.src = url;
+    audio.load();
 
     if (autoplay) {
-      audio.play().catch(console.warn);
+      userPaused = false;
+      audio.play().catch(error => console.warn("[Velmoric Music]", error));
     }
 
-    player.classList.add("active");
+    showPlayer(true);
     updatePlayer();
+
     return true;
   }
 
-  playButton.addEventListener("click", () => {
-    if (audio.paused) {
-      if (!audio.src && !loadTrack(currentTrackIndex, false)) {
-        return;
-      }
+  // Browser memblokir autoplay sebelum ada interaksi.
+  // Mulai memutar pada interaksi pertama, kecuali pengguna
+  // sudah menjeda sendiri.
+  function armGesture() {
+    if (gestureArmed) return;
 
-      audio.play().catch(console.warn);
+    gestureArmed = true;
+
+    document.addEventListener(
+      "pointerdown",
+      () => {
+        gestureArmed = false;
+
+        if (playlist.length && audio.paused && !userPaused) {
+          audio.play().catch(() => {});
+        }
+      },
+      { once: true }
+    );
+  }
+
+  // =======================================================
+  // PLAYLIST
+  // =======================================================
+
+  function setPlaylist(urls) {
+    const next = Array.isArray(urls)
+      ? urls.filter(url => typeof url === "string" && url.trim())
+      : [];
+
+    // Tidak berubah -> jangan restart lagu yang sedang berjalan.
+    if (JSON.stringify(next) === JSON.stringify(playlist)) return;
+
+    playlist = next;
+    index = 0;
+
+    if (!playlist.length) {
+      audio.pause();
+      audio.removeAttribute("src");
+      audio.load();
+
+      title.textContent = "Belum ada musik";
+
+      showPlayer(false);
+      updatePlayer();
+
+      return;
+    }
+
+    loadTrack(0, false);
+    armGesture();
+  }
+
+  // =======================================================
+  // KONTROL
+  // =======================================================
+
+  playButton.addEventListener("click", () => {
+    if (!playlist.length) return;
+
+    if (audio.paused) {
+      userPaused = false;
+      audio.play().catch(error => console.warn("[Velmoric Music]", error));
     } else {
+      userPaused = true;
       audio.pause();
     }
   });
 
-  document.getElementById("btnNextTrack").addEventListener(
-    "click",
-    () => loadTrack(currentTrackIndex + 1)
-  );
+  nextButton.addEventListener("click", () => loadTrack(index + 1));
 
-  document.getElementById("btnPrevTrack").addEventListener(
-    "click",
-    () => {
-      if (audio.currentTime > 3) {
-        audio.currentTime = 0;
-      } else {
-        loadTrack(currentTrackIndex - 1);
-      }
+  prevButton.addEventListener("click", () => {
+    if (audio.currentTime > 3) {
+      audio.currentTime = 0;
+    } else {
+      loadTrack(index - 1);
     }
-  );
-
-  [
-    "play",
-    "pause",
-    "timeupdate",
-    "loadedmetadata",
-    "durationchange"
-  ].forEach(event => {
-    audio.addEventListener(event, updatePlayer);
-  });
-
-  audio.addEventListener("ended", () => {
-    loadTrack(currentTrackIndex + 1);
   });
 
   progress.addEventListener("click", event => {
-    if (audio.duration > 0) {
-      const rect = progress.getBoundingClientRect();
-      const ratio = (event.clientX - rect.left) / rect.width;
+    if (!(audio.duration > 0)) return;
 
-      audio.currentTime =
-        Math.max(0, Math.min(1, ratio)) * audio.duration;
-    }
+    const rect = progress.getBoundingClientRect();
+    const ratio = (event.clientX - rect.left) / rect.width;
+
+    audio.currentTime = Math.max(0, Math.min(1, ratio)) * audio.duration;
   });
 
-  window.loadTrack = loadTrack;
+  ["play", "pause", "timeupdate", "loadedmetadata", "durationchange"]
+    .forEach(name => audio.addEventListener(name, updatePlayer));
+
+  audio.addEventListener("ended", () => loadTrack(index + 1));
+
+  audio.addEventListener("error", () => {
+    if (!playlist.length) return;
+
+    // Tetap tampilkan nama lagu; tandai saja bahwa gagal dimuat.
+    const name = trackName(playlist[index]);
+
+    title.textContent = `${name} (gagal dimuat)`;
+  });
+
+  // =======================================================
+  // EXPORT
+  // =======================================================
+
+  window.MusicPlayer = { setPlaylist };
+  window.loadTrack = loadTrack; // kompatibilitas kode lama
+
   updatePlayer();
+
 })();
