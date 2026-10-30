@@ -1,21 +1,16 @@
-
 /* =====================================================
    THE VELMORIC CODEX
    MAIN LOGIC
-   Anonymous Reader + Verified Admin
-===================================================== */
+   Pembaca anonim (otomatis) + admin terverifikasi (auth.js)
 
-/* =====================================================
-   AUTH CONFIGURATION
+   `characters`, `globalSettings`, dan `musicPlaylist` adalah
+   properti global milik data.js / storage.js (window.*).
 ===================================================== */
-
-const ADMIN_UID = "sjdoIiErGEMsYG7VVTazZ9xXWwh1";
 
 /* =====================================================
    GLOBAL STATE
 ===================================================== */
 
-let characters = [];
 let currentId = null;
 let editingId = null;
 let query = "";
@@ -25,15 +20,9 @@ let isLoggedIn = false;
 let isAnonymous = true;
 
 let currentView = "home";
-
-let globalSettings = {
-    theme: "dark",
-    musicUrls: []
-};
-
-let musicPlaylist = [];
-let currentTrackIndex = 0;
-let authStarted = false;
+let dataLoading = true;
+let appStarted = false;
+let lastRole = null;
 
 /* =====================================================
    DOM HELPERS
@@ -50,26 +39,80 @@ const loginOverlay = $("loginOverlay");
 const settingsModal = $("adminSettingsModal");
 
 /* =====================================================
-   STATUS MESSAGE
+   STATUS MESSAGE (TOAST)
 ===================================================== */
+
+let statusTimer = null;
 
 function setStatus(message, error = false) {
 
-    let element = $("appStatus");
+    const element = $("appStatus");
 
-    if (!element) {
+    if (!element) return;
 
-        element = document.createElement("p");
-        element.id = "appStatus";
+    clearTimeout(statusTimer);
 
-        main.prepend(element);
+    if (!message) {
+
+        element.hidden = true;
+
+        return;
+
     }
 
     element.textContent = message;
 
     element.className = error
-        ? "error"
-        : "status";
+        ? "toast error"
+        : "toast status";
+
+    element.hidden = false;
+
+    // Pesan biasa hilang sendiri; error bertahan sampai diklik.
+    if (!error) {
+
+        statusTimer = setTimeout(() => {
+
+            element.hidden = true;
+
+        }, 3500);
+
+    }
+
+}
+
+$("appStatus")?.addEventListener("click", () => setStatus(""));
+
+function friendlyError(error, fallback) {
+
+    const code = error?.code || "";
+
+    if (code === "permission-denied") {
+
+        return "Akses ditolak oleh Firestore. Pastikan firestore.rules sudah dipasang dan akunmu terdaftar sebagai admin.";
+
+    }
+
+    if (code === "unavailable" || code === "auth/network-request-failed") {
+
+        return "Tidak dapat terhubung ke server. Periksa koneksi internet.";
+
+    }
+
+    return error?.message
+        ? `${fallback} (${error.message})`
+        : fallback;
+
+}
+
+function emptyMessage() {
+
+    return `<p class="empty">${
+        dataLoading
+            ? "Memuat arsip…"
+            : "Tidak ada entri yang cocok."
+    }</p>`;
+
 }
 
 /* =====================================================
@@ -358,7 +401,7 @@ function renderHome() {
             ${
                 list.map(cardHTML).join("")
                 ||
-                '<p class="empty">Tidak ada entri yang cocok.</p>'
+                emptyMessage()
             }
 
         </div>
@@ -546,6 +589,13 @@ function renderAdminPanel() {
                     Ekspor Database
                 </button>
 
+                <button
+                    class="btn"
+                    id="importBtn"
+                >
+                    Impor Database
+                </button>
+
             </div>
 
         </section>
@@ -620,7 +670,7 @@ function render() {
 
     if (btnLogout) {
 
-        btnLogout.hidden = !isLoggedIn || isAnonymous;
+        btnLogout.hidden = !isAdmin;
 
     }
 
@@ -685,6 +735,8 @@ function hide(element) {
     if (!element) return;
 
     element.classList.remove("show");
+
+    if (element === settingsModal) revertThemePreview();
 
     const anyOpen = [
         overlay,
@@ -764,8 +816,6 @@ function readForm() {
 
     });
 
-    data.avatar ||= "👤";
-
     return data;
 
 }
@@ -788,22 +838,31 @@ form.addEventListener("submit", async event => {
 
         const data = readForm();
 
-        const success = editingId
+        if (editingId) {
 
-            ? await updateDataDiFirebase(editingId, data)
+            await updateDataDiFirebase(editingId, data);
 
-            : await simpanDataKeFirebase(data);
+        } else {
 
-        if (success) {
-
-            hide(overlay);
-
-            currentId = null;
-            currentView = "home";
-
-            render();
+            await simpanDataKeFirebase(data);
 
         }
+
+        editingId = null;
+
+        hide(overlay);
+
+        render();
+
+        setStatus("Entri berhasil disimpan.");
+
+    } catch (error) {
+
+        // Modal tetap terbuka supaya isian tidak hilang.
+        setStatus(
+            friendlyError(error, "Gagal menyimpan entri."),
+            true
+        );
 
     } finally {
 
@@ -828,21 +887,42 @@ $("fotoUrlInput").addEventListener("input", event => {
 });
 
 /* =====================================================
-   DELETE CHARACTER
+   DELETE ENTRY
 ===================================================== */
 
 async function removeEntry(id) {
 
     if (!isAdmin) return;
 
-    const success = await hapusDataDariFirebase(id);
+    const target = getChar(id);
 
-    if (success) {
+    const confirmed = confirm(
+        `Hapus "${target?.nama || "entri ini"}"? Tindakan ini tidak dapat dibatalkan.`
+    );
 
-        currentId = null;
-        currentView = "home";
+    if (!confirmed) return;
+
+    try {
+
+        await hapusDataDariFirebase(id);
+
+        if (currentId === id) {
+
+            currentId = null;
+            currentView = "home";
+
+        }
 
         render();
+
+        setStatus("Entri dihapus.");
+
+    } catch (error) {
+
+        setStatus(
+            friendlyError(error, "Gagal menghapus entri."),
+            true
+        );
 
     }
 
@@ -884,8 +964,7 @@ function exportData() {
 
     link.href = url;
 
-    link.download =
-        "velmoric-codex-backup.json";
+    link.download = "velmoric-codex-backup.json";
 
     document.body.appendChild(link);
 
@@ -907,9 +986,7 @@ async function importData(file) {
 
     try {
 
-        const parsed = JSON.parse(
-            await file.text()
-        );
+        const parsed = JSON.parse(await file.text());
 
         const items = Array.isArray(parsed)
             ? parsed
@@ -929,58 +1006,70 @@ async function importData(file) {
 
         if (!validItems.length) {
 
-            throw new Error("Tidak ada data karakter valid.");
+            throw new Error("Tidak ada entri valid di file ini.");
 
         }
 
         const confirmed = confirm(
-            `Impor ${validItems.length} entri ke Firebase? Data yang ada tidak akan dihapus.`
+            `Impor ${validItems.length} entri ke Firebase? Data yang sudah ada tidak akan dihapus.`
         );
 
         if (!confirmed) return;
 
+        let berhasil = 0;
+
         for (const item of validItems) {
 
-            const data = { ...item };
+            try {
 
-            delete data.id;
+                const data = { ...item };
 
-            const success =
+                delete data.id;
+
                 await simpanDataKeFirebase(data);
 
-            if (!success) {
+                berhasil++;
 
-                throw new Error(
-                    "Sebagian data gagal disimpan."
-                );
+            } catch (error) {
+
+                console.error("Impor satu entri gagal:", error);
 
             }
 
         }
 
-        if (parsed.settings) {
+        if (parsed.settings && !Array.isArray(parsed)) {
 
-            await simpanPengaturanGlobal(
+            try {
 
-                parsed.settings.theme,
+                await simpanPengaturanGlobal(parsed.settings);
 
-                parsed.settings.musicUrls || []
+            } catch (error) {
 
-            );
+                console.error("Impor pengaturan gagal:", error);
+
+            }
 
         }
 
         await muatDataDariFirebase();
 
-        alert("Impor selesai.");
+        render();
+
+        const gagal = validItems.length - berhasil;
+
+        setStatus(
+            gagal
+                ? `Impor selesai: ${berhasil} berhasil, ${gagal} gagal.`
+                : `Impor selesai: ${berhasil} entri.`,
+            gagal > 0
+        );
 
     } catch (error) {
 
         console.error("Import error:", error);
 
-        alert(
-            "Impor gagal: " + error.message
-        );
+        setStatus("Impor gagal: " + error.message, true);
 
     } finally {
 
@@ -991,8 +1080,44 @@ async function importData(file) {
 }
 
 /* =====================================================
-   LOGIN ADMIN MODAL
+   LOGIN ADMIN (email + password)
+   Pembaca anonim TIDAK memakai form ini.
 ===================================================== */
+
+function loginErrorMessage(error) {
+
+    switch (error?.code) {
+
+        case "not-admin":
+            return "Akun ini valid, tetapi tidak memiliki hak administrator.";
+
+        case "auth/invalid-credential":
+        case "auth/wrong-password":
+        case "auth/user-not-found":
+        case "auth/invalid-email":
+            return "Email atau password salah.";
+
+        case "auth/too-many-requests":
+            return "Terlalu banyak percobaan. Coba lagi beberapa saat lagi.";
+
+        case "auth/network-request-failed":
+            return "Koneksi bermasalah. Periksa internet kamu.";
+
+        case "auth/operation-not-allowed":
+            return "Provider Email/Password belum diaktifkan di Firebase Authentication.";
+
+        case "auth/timeout":
+            return "Waktu login habis. Coba lagi.";
+
+        case "auth/not-ready":
+            return "Firebase belum siap. Muat ulang halaman.";
+
+        default:
+            return "Login gagal. Periksa email dan password.";
+
+    }
+
+}
 
 $("btnLogin").onclick = () => {
 
@@ -1000,13 +1125,11 @@ $("btnLogin").onclick = () => {
 
     show(loginOverlay);
 
+    $("loginEmail").focus();
+
 };
 
 $("closeLogin").onclick = () => hide(loginOverlay);
-
-/* =====================================================
-   LOGIN ADMIN
-===================================================== */
 
 $("loginForm").addEventListener("submit", async event => {
 
@@ -1020,30 +1143,24 @@ $("loginForm").addEventListener("submit", async event => {
 
     try {
 
-        const email = $("loginEmail").value.trim();
-
-        const password = $("loginPassword").value;
-
-        await window.firebaseFuncs.signInWithEmailAndPassword(
-
-            window.firebaseAuth,
-
-            email,
-
-            password
-
+        await Auth.loginAdmin(
+            $("loginEmail").value.trim(),
+            $("loginPassword").value
         );
 
-        $("loginPassword").value = "";
+        $("loginForm").reset();
 
         hide(loginOverlay);
+
+        setStatus("Login admin berhasil.");
 
     } catch (error) {
 
         console.error("Login admin gagal:", error);
 
-        $("loginError").textContent =
-            "Login gagal. Periksa email dan password.";
+        $("loginError").textContent = loginErrorMessage(error);
+
+        $("loginPassword").value = "";
 
     } finally {
 
@@ -1054,7 +1171,7 @@ $("loginForm").addEventListener("submit", async event => {
 });
 
 /* =====================================================
-   LOGOUT ADMIN
+   LOGOUT ADMIN  (kembali otomatis ke pembaca anonim)
 ===================================================== */
 
 $("btnLogout").onclick = async () => {
@@ -1063,9 +1180,7 @@ $("btnLogout").onclick = async () => {
 
     try {
 
-        await window.firebaseFuncs.signOut(
-            window.firebaseAuth
-        );
+        await Auth.logoutAdmin();
 
         currentId = null;
         currentView = "home";
@@ -1074,7 +1189,7 @@ $("btnLogout").onclick = async () => {
 
         console.error("Logout gagal:", error);
 
-        alert("Gagal logout.");
+        setStatus("Gagal logout.", true);
 
     }
 
@@ -1161,17 +1276,23 @@ $("btnAdd").onclick = () => {
 };
 
 /* =====================================================
-   THEME PREVIEW
+   THEME PREVIEW (hanya pratinjau sampai disimpan)
 ===================================================== */
+
+function revertThemePreview() {
+
+    document.body.classList.toggle(
+        "light-mode",
+        globalSettings.theme === "light"
+    );
+
+}
 
 $("toggleTheme").onchange = event => {
 
     document.body.classList.toggle(
-
         "light-mode",
-
         event.target.checked
-
     );
 
 };
@@ -1184,31 +1305,60 @@ $("btnSaveSettings").onclick = async () => {
 
     if (!isAdmin) return;
 
+    const button = $("btnSaveSettings");
+
     const urls = $("inputMusicUrl").value
-
         .split(/\r?\n/)
-
         .map(url => url.trim())
-
         .filter(Boolean);
 
-    await simpanPengaturanGlobal(
+    if (urls.some(url => !/^https?:\/\//i.test(url))) {
 
-        $("toggleTheme").checked
-            ? "light"
-            : "dark",
+        setStatus(
+            "URL musik harus diawali http:// atau https://",
+            true
+        );
 
-        urls
+        return;
 
-    );
+    }
+
+    button.disabled = true;
+
+    try {
+
+        await simpanPengaturanGlobal({
+
+            theme: $("toggleTheme").checked
+                ? "light"
+                : "dark",
+
+            musicUrls: urls
+
+        });
+
+        hide(settingsModal);
+
+        setStatus("Pengaturan disimpan.");
+
+    } catch (error) {
+
+        setStatus(
+            friendlyError(error, "Gagal menyimpan pengaturan."),
+            true
+        );
+
+    } finally {
+
+        button.disabled = false;
+
+    }
 
 };
 
 /* =====================================================
    BACKUP BUTTONS
 ===================================================== */
-
-$("btnExport").onclick = exportData;
 
 $("btnImport").onchange = event => {
 
@@ -1285,6 +1435,8 @@ document.addEventListener("click", event => {
 
         render();
 
+        sidebar.classList.remove("open");
+
         window.scrollTo(0, 0);
 
         return;
@@ -1330,6 +1482,14 @@ document.addEventListener("click", event => {
 
     }
 
+    if (event.target.closest("#importBtn")) {
+
+        if (isAdmin) $("btnImport").click();
+
+        return;
+
+    }
+
     const tocLink =
         event.target.closest(".toc a");
 
@@ -1359,14 +1519,17 @@ document.addEventListener("keydown", event => {
             overlay,
             loginOverlay,
             settingsModal
-        ].forEach(hide);
+        ].forEach(element => hide(element));
 
     }
 
-    const card = event.target.closest(".card");
+    // Hanya jika kartunya sendiri yang fokus
+    // (bukan tombol Edit/Hapus di dalamnya).
+    const card = event.target.closest?.(".card");
 
     if (
         card &&
+        event.target === card &&
         (event.key === "Enter" || event.key === " ")
     ) {
 
@@ -1377,6 +1540,8 @@ document.addEventListener("keydown", event => {
         currentView = "article";
 
         render();
+
+        window.scrollTo(0, 0);
 
     }
 
@@ -1406,170 +1571,122 @@ document.addEventListener("keydown", event => {
 });
 
 /* =====================================================
-   ADMIN VERIFICATION
+   AUTH  ->  UI
+   Satu sumber kebenaran: Auth.onChange (auth.js)
 ===================================================== */
 
-async function periksaStatusAdmin(user) {
+async function muatSemua() {
 
-    if (!user) return false;
-
-    if (user.isAnonymous) return false;
-
-    if (user.uid !== ADMIN_UID) return false;
+    dataLoading = true;
 
     try {
 
-        const { doc, getDoc } =
-            window.firebaseFuncs;
-
-        const adminRef = doc(
-
-            window.firebaseDB,
-
-            "admins",
-
-            user.uid
-
-        );
-
-        const adminSnap = await getDoc(adminRef);
-
-        if (!adminSnap.exists()) {
-
-            return false;
-
-        }
-
-        return adminSnap.data().role === "admin";
+        await muatDataDariFirebase();
 
     } catch (error) {
 
-        console.error(
-            "Pemeriksaan admin gagal:",
-            error
-        );
-
-        return false;
-
-    }
-
-}
-
-/* =====================================================
-   FIREBASE AUTHENTICATION
-===================================================== */
-
-async function mulaiAplikasiFirebase() {
-
-    if (authStarted) return;
-
-    if (!window.firebaseReady) return;
-
-    authStarted = true;
-
-    const {
-        onAuthStateChanged,
-        signInAnonymously
-    } = window.firebaseFuncs;
-
-    onAuthStateChanged(
-
-        window.firebaseAuth,
-
-        async user => {
-
-            isLoggedIn = Boolean(user);
-
-            isAnonymous = user
-                ? user.isAnonymous
-                : true;
-
-            isAdmin = false;
-
-            if (!user) {
-
-                render();
-
-                try {
-
-                    await signInAnonymously(
-                        window.firebaseAuth
-                    );
-
-                } catch (error) {
-
-                    console.error(
-                        "Login anonim gagal:",
-                        error
-                    );
-
-                    setStatus(
-                        "Gagal masuk sebagai pembaca anonim. Periksa provider Anonymous di Firebase Authentication.",
-                        true
-                    );
-
-                }
-
-                return;
-
-            }
-
-            isAdmin = await periksaStatusAdmin(user);
-
-            render();
-
-            if (!user.isAnonymous && !isAdmin) {
-
-                setStatus(
-                    "Akun berhasil masuk, tetapi tidak memiliki hak administrator.",
-                    true
-                );
-
-            }
-
-            const dataOK =
-                await muatDataDariFirebase();
-
-            await muatPengaturanGlobal();
-
-            if (dataOK) {
-
-                const status = $("appStatus");
-
-                if (status && !status.classList.contains("error")) {
-
-                    status.remove();
-
-                }
-
-            }
-
-        }
-
-    );
-
-}
-
-/* =====================================================
-   FIREBASE EVENTS
-===================================================== */
-
-window.addEventListener(
-    "firebase-ready",
-    mulaiAplikasiFirebase
-);
-
-window.addEventListener(
-    "firebase-error",
-    () => {
-
         setStatus(
-            "Firebase gagal diinisialisasi. Periksa konfigurasi Firebase.",
+            friendlyError(error, "Gagal memuat arsip."),
             true
         );
 
     }
-);
+
+    try {
+
+        await muatPengaturanGlobal();
+
+    } catch (error) {
+
+        // Pengaturan opsional; pakai bawaan bila gagal.
+        console.warn("Pengaturan tidak dimuat:", error);
+
+    }
+
+    dataLoading = false;
+
+    render();
+
+}
+
+async function onAuthChange(state) {
+
+    const { ROLE } = Auth;
+
+    isLoggedIn = Boolean(state.user);
+
+    isAnonymous = !state.user || state.user.isAnonymous;
+
+    isAdmin = state.role === ROLE.ADMIN;
+
+    // Tutup semua UI admin begitu bukan admin lagi.
+    if (!isAdmin) {
+
+        hide(overlay);
+        hide(settingsModal);
+
+        if (currentView === "admin") currentView = "home";
+
+    }
+
+    if (state.role === ROLE.NONE) {
+
+        if (state.error) {
+
+            dataLoading = false;
+
+            setStatus(
+                "Gagal masuk sebagai pembaca anonim. Aktifkan provider Anonymous di Firebase Authentication dan tambahkan domain situs ke Authorized domains.",
+                true
+            );
+
+        }
+
+        render();
+
+        return;
+
+    }
+
+    render();
+
+    // Muat data saat pertama kali ada sesi, dan saat peran berubah.
+    if (state.role !== lastRole) {
+
+        lastRole = state.role;
+
+        await muatSemua();
+
+    }
+
+}
+
+function startApp() {
+
+    if (appStarted) return;
+
+    appStarted = true;
+
+    Auth.onChange(onAuthChange);
+
+    Auth.start();
+
+}
+
+window.addEventListener("firebase-ready", startApp);
+
+window.addEventListener("firebase-error", () => {
+
+    dataLoading = false;
+
+    render();
+
+    setStatus(
+        "Firebase gagal diinisialisasi. Periksa konfigurasi Firebase.",
+        true
+    );
+
+});
 
 /* =====================================================
    INITIALIZATION
@@ -1579,6 +1696,6 @@ render();
 
 if (window.firebaseReady) {
 
-    mulaiAplikasiFirebase();
+    startApp();
 
 }
