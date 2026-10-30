@@ -15,13 +15,23 @@
     <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 
     <link rel="stylesheet" href="css/style.css">
+
+    <link rel="modulepreload" href="js/firebase.js">
 </head>
 
 <body>
 
+<script>
+    /* Terapkan tema tersimpan sebelum halaman tampil (mencegah kedipan). */
+    try {
+        var saved = JSON.parse(localStorage.getItem("velmoric:settings:v1") || "{}");
+        if (saved.theme === "light") document.body.classList.add("light-mode");
+    } catch (e) {}
+</script>
+
 <header class="topbar">
 
-    <button class="btn mobile-menu" id="menuBtn">☰</button>
+    <button class="btn mobile-menu" id="menuBtn" aria-label="Buka menu">☰</button>
 
     <button class="brand" id="brandBtn">
 
@@ -96,121 +106,14 @@
 
     <div class="modal">
 
-        <button class="modal-close" id="closeModal">×</button>
+        <button class="modal-close" id="closeModal" aria-label="Tutup">×</button>
 
         <h2 id="modalTitle">Tambah Entri</h2>
 
         <form id="charForm">
 
-            <div class="form-grid">
-
-                <div class="field full">
-                    <label>Nama</label>
-                    <input name="nama" required>
-                </div>
-
-                <div class="field">
-                    <label>Kategori</label>
-                    <select name="kategori">
-                        <option>Karakter</option>
-                        <option>Kerajaan</option>
-                        <option>Ras</option>
-                        <option>Makhluk</option>
-                        <option>Artefak</option>
-                        <option>Lokasi</option>
-                        <option>Organisasi</option>
-                        <option>Peristiwa</option>
-                        <option>Lainnya</option>
-                    </select>
-                </div>
-
-                <div class="field">
-                    <label>Gelar</label>
-                    <input name="gelar">
-                </div>
-
-                <div class="field">
-                    <label>Ras</label>
-                    <input name="ras">
-                </div>
-
-                <div class="field">
-                    <label>Gender</label>
-                    <input name="gender">
-                </div>
-
-                <div class="field">
-                    <label>Usia</label>
-                    <input name="usia">
-                </div>
-
-                <div class="field">
-                    <label>Tinggi</label>
-                    <input name="tinggi">
-                </div>
-
-                <div class="field">
-                    <label>Berat</label>
-                    <input name="berat">
-                </div>
-
-                <div class="field">
-                    <label>Asal</label>
-                    <input name="asal">
-                </div>
-
-                <div class="field">
-                    <label>Afiliasi</label>
-                    <input name="afiliasi">
-                </div>
-
-                <div class="field">
-                    <label>Status</label>
-                    <input name="status">
-                </div>
-
-                <div class="field">
-                    <label>Kelas</label>
-                    <input name="kelas">
-                </div>
-
-                <div class="field full">
-                    <label>URL Gambar</label>
-                    <input
-                        name="foto"
-                        id="fotoUrlInput"
-                        type="url"
-                        placeholder="https://..."
-                    >
-                    <img id="fotoPreview" hidden alt="Preview">
-                </div>
-
-                <div class="field full">
-                    <label>Deskripsi</label>
-                    <textarea name="deskripsi"></textarea>
-                </div>
-
-                <div class="field full">
-                    <label>Kepribadian</label>
-                    <textarea name="kepribadian"></textarea>
-                </div>
-
-                <div class="field full">
-                    <label>Latar Belakang</label>
-                    <textarea name="latar"></textarea>
-                </div>
-
-                <div class="field full">
-                    <label>Kemampuan</label>
-                    <textarea name="kemampuan"></textarea>
-                </div>
-
-                <div class="field full">
-                    <label>Kelemahan</label>
-                    <textarea name="kelemahan"></textarea>
-                </div>
-
-            </div>
+            <!-- Field dibuat otomatis dari js/schema.js -->
+            <div class="form-grid" id="formFields"></div>
 
             <div class="modal-actions">
 
@@ -236,7 +139,7 @@
 
     <div class="modal" style="max-width:420px">
 
-        <button class="modal-close" id="closeLogin">×</button>
+        <button class="modal-close" id="closeLogin" aria-label="Tutup">×</button>
 
         <h2>Administrator Access</h2>
 
@@ -289,7 +192,7 @@
 
     <div class="modal">
 
-        <button class="modal-close" id="closeSettings">×</button>
+        <button class="modal-close" id="closeSettings" aria-label="Tutup">×</button>
 
         <h2>Website Configuration</h2>
 
@@ -366,106 +269,13 @@
     accept=".json,application/json"
 >
 
-<!-- FIREBASE INITIALIZATION -->
+<!-- APLIKASI (modul ES; config Firebase ada di js/firebase.js) -->
 
-<script>
-    window.firebaseReady = false;
-</script>
-
-<script src="js/data.js"></script>
-<script src="js/storage.js"></script>
-<script src="js/auth.js"></script>
-<script src="js/music-player.js"></script>
-<script src="js/logic.js"></script>
-
-<script type="module">
-
-    import {
-        initializeApp
-    } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js";
-
-    import {
-        getAuth,
-        onAuthStateChanged,
-        signInAnonymously,
-        signInWithEmailAndPassword,
-        signOut
-    } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js";
-
-    import {
-        getFirestore,
-        collection,
-        doc,
-        getDoc,
-        getDocs,
-        addDoc,
-        updateDoc,
-        deleteDoc,
-        setDoc
-    } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js";
-
-    /*
-       Config Firebase proyekmu. (Kunci web Firebase memang publik;
-       keamanan data dijaga oleh firestore.rules.)
-
-       Firebase Console:
-       Project Settings
-       General
-       Your apps
-       SDK setup and configuration
-       Config
-    */
-
-    const firebaseConfig = {
-        apiKey: "AIzaSyBb4xpWkV2sSARxKGS5UuRJwu8bG-qlkig",
-  authDomain: "login-5ab48.firebaseapp.com",
-  projectId: "login-5ab48",
-  storageBucket: "login-5ab48.firebasestorage.app",
-  messagingSenderId: "770076903708",
-  appId: "1:770076903708:web:d493b3660094c084f892d9"
-    };
-
-    try {
-
-        const app = initializeApp(firebaseConfig);
-
-        window.firebaseAuth = getAuth(app);
-
-        window.firebaseDB = getFirestore(app);
-
-        window.firebaseFuncs = {
-            onAuthStateChanged,
-            signInAnonymously,
-            signInWithEmailAndPassword,
-            signOut,
-
-            collection,
-            doc,
-            getDoc,
-            getDocs,
-            addDoc,
-            updateDoc,
-            deleteDoc,
-            setDoc
-        };
-
-        window.firebaseReady = true;
-
-        window.dispatchEvent(
-            new Event("firebase-ready")
-        );
-
-    } catch (error) {
-
-        console.error("Firebase initialization error:", error);
-
-        window.dispatchEvent(
-            new Event("firebase-error")
-        );
-
-    }
-
-</script>
+<script
+    type="module"
+    src="js/app.js"
+    onerror="document.getElementById('main').innerHTML='<p class=&quot;empty&quot;>Gagal memuat aplikasi. Periksa koneksi internet lalu muat ulang halaman.</p>'"
+></script>
 
 </body>
 </html>

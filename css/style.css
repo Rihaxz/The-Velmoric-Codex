@@ -397,6 +397,9 @@ main {
 
 .infobox-img {
     height: 250px;
+    display: grid;
+    place-items: center;
+    font-size: 64px;
     overflow: hidden;
     margin-bottom: 15px;
     background: var(--panel2);
@@ -779,4 +782,62 @@ body.has-player main {
     body.has-player main {
         padding-bottom: 150px;
     }
+}
+
+/* =========================================================
+   TAMBAHAN: filter kategori, grup sidebar, tautan tombol
+========================================================= */
+
+a.btn {
+    display: inline-block;
+}
+
+.side-group {
+    margin: 14px 10px 6px;
+    color: var(--muted);
+    font-size: 10px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+}
+
+.chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 20px;
+}
+
+.chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    color: var(--muted);
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    font-size: 12px;
+}
+
+.chip span {
+    color: var(--gold);
+    font-size: 11px;
+}
+
+.chip:hover,
+.chip.active {
+    color: var(--text);
+    border-color: var(--gold);
+}
+
+.chip.active {
+    background: var(--panel2);
+}
+
+.card:focus-visible,
+.chip:focus-visible,
+.side-link:focus-visible,
+.btn:focus-visible {
+    outline: 2px solid var(--gold);
+    outline-offset: 2px;
 }

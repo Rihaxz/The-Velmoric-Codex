@@ -22,28 +22,51 @@ Tidak ada tombol login di tampilan publik; form admin hanya muncul lewat link `#
 5. **Firestore → Rules**: tempel isi `firestore.rules` lalu **Publish**.
 6. (Disarankan) Google Cloud Console → Credentials → batasi API key ke referrer `https://rihaxz.github.io/*`.
 
-Config Firebase ada di `index.html` (blok `firebaseConfig`).
+Config Firebase ada di `js/firebase.js`. Salinan aturan yang cocok dengan kode ini ada di `firestore.rules`.
+
+## Alamat halaman
+
+| Alamat | Isi |
+|--------|-----|
+| `#/` | Beranda (pencarian + filter kategori) |
+| `#/e/<id>` | Artikel entri — bisa dibagikan, tombol Back berfungsi |
+| `#/admin` | Panel admin (khusus admin) |
+| `#admin` | Membuka form login admin |
 
 ## Struktur proyek
 
 ```text
-├── index.html
+├── index.html           # kerangka halaman
 ├── css/style.css
 ├── js/
-│   ├── data.js          # state global + helper
-│   ├── storage.js       # CRUD Firestore + tema/pengaturan
+│   ├── app.js           # titik masuk: state, routing, event
+│   ├── views.js         # template HTML (tanpa logika DOM)
+│   ├── schema.js        # DEFINISI FIELD & KATEGORI (ubah di sini)
+│   ├── storage.js       # CRUD Firestore, impor batch, cache lokal
 │   ├── auth.js          # pembaca anonim vs admin (terpisah)
+│   ├── firebase.js      # config + inisialisasi Firebase
 │   ├── music-player.js  # pemutar musik latar
-│   └── logic.js         # UI, render, event
-├── firestore.rules      # aturan keamanan Firestore
-└── legacy/              # kode lama (tidak dipakai)
+│   └── utils.js         # helper kecil (esc, debounce, dll)
+├── tests/               # tes untuk schema & template
+├── scripts/check.js     # cek sintaks semua file JS
+└── firestore.rules      # aturan keamanan Firestore
 ```
+
+### Menambah field baru
+
+Tambahkan satu baris di `js/schema.js`:
+
+- `INFO_FIELDS` untuk data singkat (tampil di infobox), atau
+- `SECTIONS` untuk teks panjang (tampil sebagai bagian artikel + daftar isi).
+
+Form admin, artikel, pencarian, dan impor JSON otomatis menyesuaikan. Jangan mengganti `key` yang sudah dipakai, karena itu nama field di Firestore.
 
 ## Menjalankan lokal
 
 ```bash
 npm start      # atau: python3 -m http.server 8080
 npm run check  # cek sintaks semua file JS
+npm test       # jalankan tes (Node 18+)
 ```
 
-> Buka lewat `http://localhost`, bukan `file://` (modul Firebase butuh HTTP).
+> Buka lewat `http://localhost`, bukan `file://` (modul ES & Firebase butuh HTTP).

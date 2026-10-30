@@ -2,13 +2,19 @@
    THE VELMORIC CODEX
    music-player.js
    Pemutar musik latar. Berdiri sendiri; playlist diatur lewat
-   MusicPlayer.setPlaylist(urls) dari storage.js.
+   setPlaylist(urls) dari app.js.
 ========================================================= */
 
-(() => {
-  "use strict";
+import { $ } from "./utils.js";
 
-  const $ = id => document.getElementById(id);
+let setPlaylistImpl = () => {};
+
+/** Ganti playlist. Tidak me-restart lagu bila daftar sama. */
+export function setPlaylist(urls) {
+  setPlaylistImpl(urls);
+}
+
+(() => {
 
   const audio = $("bgMusic");
   const player = $("musicPlayer");
@@ -30,8 +36,6 @@
   ) {
     console.warn("[Velmoric Music] Markup pemutar tidak lengkap.");
 
-    window.MusicPlayer = { setPlaylist() {} };
-
     return;
   }
 
@@ -39,6 +43,7 @@
   let index = 0;
   let userPaused = false;
   let gestureArmed = false;
+  let failedInRow = 0;
 
   // =======================================================
   // HELPER
@@ -145,7 +150,12 @@
       : [];
 
     // Tidak berubah -> jangan restart lagu yang sedang berjalan.
-    if (JSON.stringify(next) === JSON.stringify(playlist)) return;
+    if (
+      next.length === playlist.length &&
+      next.every((url, i) => url === playlist[i])
+    ) return;
+
+    failedInRow = 0;
 
     playlist = next;
     index = 0;
@@ -214,14 +224,25 @@
     const name = trackName(playlist[index]);
 
     title.textContent = `${name} (gagal dimuat)`;
+
+    // Lompat ke lagu berikutnya, tapi berhenti jika semua gagal
+    // supaya tidak berputar tanpa akhir.
+    failedInRow += 1;
+
+    if (failedInRow < playlist.length && !userPaused) {
+      setTimeout(() => loadTrack(index + 1), 1500);
+    }
+  });
+
+  audio.addEventListener("playing", () => {
+    failedInRow = 0;
   });
 
   // =======================================================
   // EXPORT
   // =======================================================
 
-  window.MusicPlayer = { setPlaylist };
-  window.loadTrack = loadTrack; // kompatibilitas kode lama
+  setPlaylistImpl = setPlaylist;
 
   updatePlayer();
 

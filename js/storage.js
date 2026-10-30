@@ -1,341 +1,273 @@
 /* =========================================================
-   THE VELMORIC CODEX
-   storage.js
-   Firebase Firestore Storage Manager
+   THE VELMORIC CODEX — storage.js
+   Semua akses Firestore + cache lokal.
 
-   Semua fungsi melempar error jika gagal; pemanggil (logic.js)
-   yang menampilkan pesan ke pengguna.
+   - Data entri disimpan di memori (urut nama) beserta indeks
+     pencarian, jadi pencarian tidak perlu memproses ulang
+     seluruh objek di setiap ketikan.
+   - Salinan terakhir disimpan di localStorage sehingga arsip
+     langsung tampil saat halaman dibuka, lalu diperbarui
+     begitu data dari Firestore tiba.
+   - Semua fungsi async melempar error; pemanggil (app.js)
+     yang menampilkan pesan.
 ========================================================= */
 
-(() => {
-  "use strict";
+import {
+  db,
+  collection,
+  doc,
+  getDoc,
+  getDocs,
+  addDoc,
+  updateDoc,
+  deleteDoc,
+  setDoc,
+  writeBatch
+} from "./firebase.js";
 
-  const COLLECTION_KARAKTER = "karakter";
-  const COLLECTION_PENGATURAN = "pengaturan";
-  const SETTINGS_DOCUMENT = "global";
+import { SEARCH_KEYS, isHttpUrl, sanitizeEntry } from "./schema.js";
+import { collator, normalizeText, safeStorage } from "./utils.js";
 
-  // =======================================================
-  // HELPER
-  // =======================================================
+const COLLECTION_ENTRIES = "karakter";
+const COLLECTION_SETTINGS = "pengaturan";
+const SETTINGS_DOC = "global";
 
-  function getFirebaseDB() {
-    if (!window.firebaseDB) {
-      throw new Error("Firebase Firestore belum diinisialisasi.");
+const CACHE_ENTRIES = "velmoric:entries:v1";
+const CACHE_SETTINGS = "velmoric:settings:v1";
+
+const BATCH_LIMIT = 400; // batas Firestore 500 operasi per batch
+
+// =========================================================
+// STATE ENTRI
+// =========================================================
+
+let entries = [];
+let byId = new Map();
+let searchIndex = new Map();
+
+function setEntries(list, { persist = true } = {}) {
+  entries = [...list].sort((a, b) =>
+    collator.compare(String(a.nama || ""), String(b.nama || ""))
+  );
+
+  byId = new Map(entries.map(entry => [entry.id, entry]));
+
+  searchIndex = new Map(
+    entries.map(entry => [
+      entry.id,
+      normalizeText(SEARCH_KEYS.map(key => entry[key] || "").join(" \u0001 "))
+    ])
+  );
+
+  if (persist) safeStorage.set(CACHE_ENTRIES, entries);
+}
+
+export function getEntries() {
+  return entries;
+}
+
+export function getEntry(id) {
+  return byId.get(id) || null;
+}
+
+/**
+ * Filter berdasarkan kata kunci + kategori.
+ * Semua kata harus cocok (urutan bebas): "naga api" cocok
+ * dengan entri yang memuat "api" dan "naga".
+ */
+export function queryEntries({ text = "", category = "" } = {}) {
+  const words = normalizeText(text).split(/\s+/).filter(Boolean);
+
+  return entries.filter(entry => {
+    if (category && entry.kategori !== category) return false;
+    if (!words.length) return true;
+
+    const haystack = searchIndex.get(entry.id) || "";
+    return words.every(word => haystack.includes(word));
+  });
+}
+
+/** Jumlah entri per kategori, untuk tombol filter. */
+export function countByCategory() {
+  const counts = new Map();
+
+  for (const entry of entries) {
+    const key = entry.kategori || "Lainnya";
+    counts.set(key, (counts.get(key) || 0) + 1);
+  }
+
+  return counts;
+}
+
+// =========================================================
+// MEMUAT
+// =========================================================
+
+/** Tampilkan data terakhir dari cache (instan, tanpa jaringan). */
+export function loadCachedEntries() {
+  const cached = safeStorage.get(CACHE_ENTRIES, []);
+
+  if (Array.isArray(cached) && cached.length) {
+    setEntries(cached, { persist: false });
+    return true;
+  }
+
+  return false;
+}
+
+export async function loadEntries() {
+  const snapshot = await getDocs(collection(db, COLLECTION_ENTRIES));
+
+  setEntries(snapshot.docs.map(item => ({ id: item.id, ...item.data() })));
+
+  return entries;
+}
+
+// =========================================================
+// TULIS (hanya admin; ditegakkan oleh firestore.rules)
+// =========================================================
+
+const now = () => new Date().toISOString();
+
+export async function createEntry(input) {
+  const time = now();
+
+  const data = {
+    ...sanitizeEntry(input),
+    dibuatPada: time,
+    diperbaruiPada: time
+  };
+
+  const ref = await addDoc(collection(db, COLLECTION_ENTRIES), data);
+  const created = { id: ref.id, ...data };
+
+  setEntries([...entries, created]);
+
+  return created;
+}
+
+export async function updateEntry(id, input) {
+  if (!id) throw new Error("ID entri tidak ditemukan.");
+
+  const data = { ...sanitizeEntry(input), diperbaruiPada: now() };
+
+  await updateDoc(doc(db, COLLECTION_ENTRIES, id), data);
+
+  setEntries(entries.map(entry =>
+    entry.id === id ? { ...entry, ...data } : entry
+  ));
+
+  return getEntry(id);
+}
+
+export async function deleteEntry(id) {
+  if (!id) throw new Error("ID entri tidak ditemukan.");
+
+  await deleteDoc(doc(db, COLLECTION_ENTRIES, id));
+
+  setEntries(entries.filter(entry => entry.id !== id));
+}
+
+/**
+ * Impor banyak entri sekaligus memakai batch write
+ * (jauh lebih cepat daripada satu per satu).
+ * Entri tidak valid dilewati dan dilaporkan.
+ */
+export async function importEntries(items) {
+  const valid = [];
+  const skipped = [];
+
+  items.forEach((item, index) => {
+    try {
+      const time = now();
+      const created =
+        typeof item?.dibuatPada === "string" && !Number.isNaN(Date.parse(item.dibuatPada))
+          ? item.dibuatPada
+          : time;
+
+      valid.push({ ...sanitizeEntry(item), dibuatPada: created, diperbaruiPada: time });
+    } catch (error) {
+      skipped.push({ index, reason: error.message });
+    }
+  });
+
+  let written = 0;
+
+  for (let start = 0; start < valid.length; start += BATCH_LIMIT) {
+    const batch = writeBatch(db);
+
+    for (const data of valid.slice(start, start + BATCH_LIMIT)) {
+      batch.set(doc(collection(db, COLLECTION_ENTRIES)), data);
     }
 
-    return window.firebaseDB;
+    await batch.commit();
+    written += Math.min(BATCH_LIMIT, valid.length - start);
   }
 
-  function getFunction(name) {
-    const funcs = window.firebaseFuncs;
+  if (written) await loadEntries();
 
-    if (!funcs || typeof funcs[name] !== "function") {
-      throw new Error(`Firebase function "${name}" tidak ditemukan.`);
-    }
+  return { written, skipped };
+}
 
-    return funcs[name];
+export function buildBackup(settings) {
+  return {
+    app: "The Velmoric Codex",
+    version: 2,
+    exportedAt: now(),
+    characters: entries,
+    settings
+  };
+}
+
+// =========================================================
+// PENGATURAN GLOBAL
+// =========================================================
+
+export function normalizeSettings(source = {}) {
+  const input = source && typeof source === "object" ? source : {};
+
+  let urls = [];
+
+  if (Array.isArray(input.musicUrls)) {
+    urls = input.musicUrls;
+  } else if (typeof input.musicUrl === "string") {
+    urls = [input.musicUrl]; // format lama
   }
 
-  function getTimestamp() {
-    return new Date().toISOString();
-  }
-
-  function logError(action, error) {
-    console.error(`[Velmoric Storage] ${action}:`, error);
-    return error;
-  }
-
-  function currentCharacters() {
-    return Array.isArray(window.characters) ? window.characters : [];
-  }
-
-  function normalizeSettings(settings = {}) {
-    const source = settings && typeof settings === "object" ? settings : {};
-
-    const theme = source.theme === "light" ? "light" : "dark";
-
-    let musicUrls = [];
-
-    if (Array.isArray(source.musicUrls)) {
-      musicUrls = source.musicUrls;
-    } else if (
-      typeof source.musicUrl === "string" &&
-      source.musicUrl.trim()
-    ) {
-      musicUrls = [source.musicUrl.trim()];
-    }
-
-    musicUrls = musicUrls
+  const musicUrls = [...new Set(
+    urls
       .filter(url => typeof url === "string")
       .map(url => url.trim())
-      .filter(Boolean);
+      .filter(isHttpUrl)
+  )];
 
-    return {
-      theme,
-      musicUrls,
-      musicUrl: musicUrls[0] || ""
-    };
-  }
+  return {
+    theme: input.theme === "light" ? "light" : "dark",
+    musicUrls,
+    musicUrl: musicUrls[0] || "" // kompatibilitas data lama
+  };
+}
 
-  // =======================================================
-  // MEMUAT DATA
-  // =======================================================
+export function getCachedSettings() {
+  return normalizeSettings(safeStorage.get(CACHE_SETTINGS, {}));
+}
 
-  async function muatDataDariFirebase() {
-    try {
-      const db = getFirebaseDB();
-      const collection = getFunction("collection");
-      const getDocs = getFunction("getDocs");
+/** Hanya membaca; pembaca anonim tidak boleh menulis. */
+export async function loadSettings() {
+  const snapshot = await getDoc(doc(db, COLLECTION_SETTINGS, SETTINGS_DOC));
+  const settings = normalizeSettings(snapshot.exists() ? snapshot.data() : {});
 
-      const snapshot = await getDocs(
-        collection(db, COLLECTION_KARAKTER)
-      );
+  safeStorage.set(CACHE_SETTINGS, settings);
 
-      const data = [];
+  return settings;
+}
 
-      snapshot.forEach(document => {
-        data.push({ id: document.id, ...document.data() });
-      });
+export async function saveSettings(input) {
+  const settings = normalizeSettings(input);
 
-      // Terbaru dulu.
-      data.sort((a, b) =>
-        String(b.dibuatPada || "").localeCompare(
-          String(a.dibuatPada || "")
-        )
-      );
+  await setDoc(doc(db, COLLECTION_SETTINGS, SETTINGS_DOC), settings, { merge: true });
 
-      window.characters = data;
+  safeStorage.set(CACHE_SETTINGS, settings);
 
-      console.log(`[Velmoric Storage] ${data.length} entri dimuat.`);
-
-      return data;
-
-    } catch (error) {
-      throw logError("Gagal memuat entri", error);
-    }
-  }
-
-  // =======================================================
-  // MENAMBAH ENTRI
-  // =======================================================
-
-  async function simpanDataKeFirebase(dataKarakter) {
-    try {
-      if (!dataKarakter || typeof dataKarakter !== "object") {
-        throw new Error("Data entri tidak valid.");
-      }
-
-      const db = getFirebaseDB();
-      const collection = getFunction("collection");
-      const addDoc = getFunction("addDoc");
-
-      const waktu = getTimestamp();
-
-      const data = {
-        ...dataKarakter,
-        nama: String(dataKarakter.nama || "").trim(),
-        kategori: String(dataKarakter.kategori || "Lainnya").trim(),
-        dibuatPada: dataKarakter.dibuatPada || waktu,
-        diperbaruiPada: waktu
-      };
-
-      // ID dibuat Firestore; jangan disimpan sebagai field.
-      delete data.id;
-
-      if (!data.nama) {
-        throw new Error("Nama entri tidak boleh kosong.");
-      }
-
-      const result = await addDoc(
-        collection(db, COLLECTION_KARAKTER),
-        data
-      );
-
-      const baru = { id: result.id, ...data };
-
-      window.characters = [baru, ...currentCharacters()];
-
-      return baru;
-
-    } catch (error) {
-      throw logError("Gagal menyimpan entri", error);
-    }
-  }
-
-  // =======================================================
-  // MEMPERBARUI ENTRI
-  // =======================================================
-
-  async function updateDataDiFirebase(id, dataKarakter) {
-    try {
-      if (!id) {
-        throw new Error("ID entri tidak ditemukan.");
-      }
-
-      if (!dataKarakter || typeof dataKarakter !== "object") {
-        throw new Error("Data entri tidak valid.");
-      }
-
-      const db = getFirebaseDB();
-      const doc = getFunction("doc");
-      const updateDoc = getFunction("updateDoc");
-
-      const data = {
-        ...dataKarakter,
-        diperbaruiPada: getTimestamp()
-      };
-
-      delete data.id;
-      delete data.dibuatPada; // tanggal dibuat tidak boleh berubah
-
-      if (data.nama !== undefined) {
-        data.nama = String(data.nama).trim();
-
-        if (!data.nama) {
-          throw new Error("Nama entri tidak boleh kosong.");
-        }
-      }
-
-      await updateDoc(doc(db, COLLECTION_KARAKTER, id), data);
-
-      window.characters = currentCharacters().map(item =>
-        item.id === id ? { ...item, ...data, id } : item
-      );
-
-      return { id, ...data };
-
-    } catch (error) {
-      throw logError("Gagal memperbarui entri", error);
-    }
-  }
-
-  // =======================================================
-  // MENGHAPUS ENTRI
-  // =======================================================
-
-  async function hapusDataDariFirebase(id) {
-    try {
-      if (!id) {
-        throw new Error("ID entri tidak ditemukan.");
-      }
-
-      const db = getFirebaseDB();
-      const doc = getFunction("doc");
-      const deleteDoc = getFunction("deleteDoc");
-
-      await deleteDoc(doc(db, COLLECTION_KARAKTER, id));
-
-      window.characters = currentCharacters().filter(
-        item => item.id !== id
-      );
-
-      return true;
-
-    } catch (error) {
-      throw logError("Gagal menghapus entri", error);
-    }
-  }
-
-  // =======================================================
-  // PENGATURAN GLOBAL
-  // =======================================================
-
-  /**
-   * Hanya MEMBACA. Jika dokumen belum ada, pakai nilai bawaan.
-   * (Versi lama mencoba menulis dokumen default dari sesi
-   * pembaca anonim -> selalu ditolak oleh rules.)
-   */
-  async function muatPengaturanGlobal() {
-    try {
-      const db = getFirebaseDB();
-      const doc = getFunction("doc");
-      const getDoc = getFunction("getDoc");
-
-      const snapshot = await getDoc(
-        doc(db, COLLECTION_PENGATURAN, SETTINGS_DOCUMENT)
-      );
-
-      const settings = normalizeSettings(
-        snapshot.exists() ? snapshot.data() : {}
-      );
-
-      applyGlobalSettings(settings);
-
-      return settings;
-
-    } catch (error) {
-      throw logError("Gagal memuat pengaturan", error);
-    }
-  }
-
-  /**
-   * Menerapkan tema + playlist ke halaman.
-   * Tema memakai class `light-mode` pada <body> (sesuai CSS).
-   */
-  function applyGlobalSettings(settings = {}) {
-    const normalized = normalizeSettings(settings);
-
-    window.globalSettings = normalized;
-    window.musicPlaylist = normalized.musicUrls;
-
-    document.documentElement.setAttribute("data-theme", normalized.theme);
-
-    document.body.classList.toggle(
-      "light-mode",
-      normalized.theme === "light"
-    );
-
-    if (window.MusicPlayer) {
-      window.MusicPlayer.setPlaylist(normalized.musicUrls);
-    }
-
-    return normalized;
-  }
-
-  /**
-   * Menerima objek { theme, musicUrls }
-   * ATAU gaya lama: (theme, musicUrls[]).
-   */
-  async function simpanPengaturanGlobal(arg1 = {}, arg2) {
-    try {
-      const input =
-        typeof arg1 === "string"
-          ? { theme: arg1, musicUrls: arg2 }
-          : arg1;
-
-      const db = getFirebaseDB();
-      const doc = getFunction("doc");
-      const setDoc = getFunction("setDoc");
-
-      const normalized = normalizeSettings(input);
-
-      await setDoc(
-        doc(db, COLLECTION_PENGATURAN, SETTINGS_DOCUMENT),
-        normalized,
-        { merge: true }
-      );
-
-      applyGlobalSettings(normalized);
-
-      return normalized;
-
-    } catch (error) {
-      throw logError("Gagal menyimpan pengaturan", error);
-    }
-  }
-
-  // =======================================================
-  // EXPORT
-  // =======================================================
-
-  window.muatDataDariFirebase = muatDataDariFirebase;
-  window.simpanDataKeFirebase = simpanDataKeFirebase;
-  window.updateDataDiFirebase = updateDataDiFirebase;
-  window.hapusDataDariFirebase = hapusDataDariFirebase;
-  window.muatPengaturanGlobal = muatPengaturanGlobal;
-  window.applyGlobalSettings = applyGlobalSettings;
-  window.simpanPengaturanGlobal = simpanPengaturanGlobal;
-
-  console.log("[Velmoric Storage] Storage manager dimuat.");
-
-})();
+  return settings;
+}

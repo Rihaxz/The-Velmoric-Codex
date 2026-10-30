@@ -1,0 +1,61 @@
+rules_version = '2';
+
+// =========================================================
+// THE VELMORIC CODEX — firestore.rules
+// Salinan aturan yang sesuai dengan kode di repo ini.
+// Tempel di Firebase Console -> Firestore -> Rules -> Publish.
+//
+// - Semua sesi (termasuk pembaca anonim) boleh MEMBACA.
+// - Hanya admin (dokumen admins/{uid} dengan role == "admin")
+//   yang boleh MENULIS entri dan pengaturan.
+// - Koleksi admins tidak bisa diubah dari browser sama sekali.
+// =========================================================
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return signedIn()
+        && request.auth.token.firebase.sign_in_provider != 'anonymous'
+        && exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+        && get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    function validEntry() {
+      let d = request.resource.data;
+      return d.nama is string
+        && d.nama.size() > 0
+        && d.nama.size() <= 200
+        && d.kategori is string
+        && d.kategori.size() <= 200;
+    }
+
+    // Entri ensiklopedia
+    match /karakter/{id} {
+      allow read: if signedIn();
+      allow create, update: if isAdmin() && validEntry();
+      allow delete: if isAdmin();
+    }
+
+    // Pengaturan situs (tema, playlist)
+    match /pengaturan/{id} {
+      allow read: if signedIn();
+      allow write: if isAdmin();
+    }
+
+    // Daftar admin: hanya bisa membaca dokumen milik sendiri.
+    match /admins/{uid} {
+      allow read: if signedIn() && request.auth.uid == uid;
+      allow write: if false;
+    }
+
+    // Selain di atas: tolak.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
