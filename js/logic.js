@@ -1,8 +1,10 @@
+
 let characters = [];
 let currentId = null;
 let editingId = null;
 let query = "";
 let isAdmin = false;
+let isLoggedIn = false;
 let currentView = "home";
 let globalSettings = { theme: "dark", musicUrls: [] };
 let musicPlaylist = [];
@@ -101,20 +103,35 @@ function renderHome() {
   const list = filtered();
 
   return `
-    <section class="hero">
-      <p>ARSIP DUNIA VELMOR</p>
-      <h1>The Velmoric Codex</h1>
-      <p>
-        Ensiklopedia karakter, makhluk, lokasi, artefak,
-        dan sejarah dunia fantasi.
-      </p>
-      ${isAdmin ? `
-        <button class="btn primary" id="homeAdd">Tambah Entri</button>
-        <button class="btn" id="openSettingsBtn">Pengaturan</button>
-      ` : ""}
+    <section class="hero hero-illustrated">
+      <div class="hero-copy">
+        <p>ARSIP DUNIA VELMOR</p>
+        <h1>The Velmoric Codex</h1>
+        <p>
+          Ensiklopedia karakter, makhluk, lokasi, artefak,
+          dan sejarah dunia fantasi.
+        </p>
+        ${isAdmin ? `
+          <button class="btn primary" id="homeAdd">Tambah Entri</button>
+          <button class="btn" id="openSettingsBtn">Pengaturan</button>
+        ` : ""}
+      </div>
+      <div class="hero-art" role="img" aria-label="Ilustrasi fantasi untuk dunia Velmor"></div>
     </section>
 
-    <h2>
+    <section class="codex-intro">
+      <div>
+        <span class="eyebrow">PENGETAHUAN YANG TERLUPAKAN</span>
+        <h2>Catatan dari dunia lain</h2>
+        <p>Jelajahi tokoh, kerajaan, makhluk, relik, dan peristiwa yang membentuk sejarah Velmor.</p>
+      </div>
+      <div class="intro-stat">
+        <strong>${characters.length}</strong>
+        <span>ARSIP TERSIMPAN</span>
+      </div>
+    </section>
+
+    <h2 class="archive-heading">
       ${query ? "Hasil Pencarian" : "Arsip Codex"}
       <small>${list.length} entri</small>
     </h2>
@@ -192,8 +209,8 @@ function render() {
     currentView = "home";
   }
 
-  $("btnLogin").hidden = isAdmin;
-  $("btnLogout").hidden = !isAdmin;
+  $("btnLogin").hidden = isLoggedIn;
+  $("btnLogout").hidden = !isLoggedIn;
   $("btnAdd").hidden = !isAdmin;
   $("navAdmin").hidden = !isAdmin;
 
@@ -387,6 +404,39 @@ $("loginForm").addEventListener("submit", async event => {
   }
 });
 
+$("btnGoogleLogin").addEventListener("click", async () => {
+  const button = $("btnGoogleLogin");
+  const original = button.innerHTML;
+
+  button.disabled = true;
+  button.textContent = "Menghubungkan ke Google…";
+  $("loginError").textContent = "";
+
+  try {
+    const provider = new window.firebaseFuncs.GoogleAuthProvider();
+    provider.setCustomParameters({ prompt: "select_account" });
+
+    await window.firebaseFuncs.signInWithPopup(
+      window.firebaseAuth,
+      provider
+    );
+
+    hide(loginOverlay);
+  } catch (error) {
+    console.error("Google sign-in gagal:", error);
+
+    $("loginError").textContent =
+      error.code === "auth/unauthorized-domain"
+        ? "Domain website belum diizinkan di Firebase Authentication."
+        : error.code === "auth/popup-closed-by-user"
+          ? "Jendela login ditutup sebelum selesai."
+          : "Login Google gagal. Pastikan Google provider aktif di Firebase Authentication.";
+  } finally {
+    button.disabled = false;
+    button.innerHTML = original;
+  }
+});
+
 $("search").addEventListener("input", event => {
   query = event.target.value.toLowerCase().trim();
   render();
@@ -524,18 +574,73 @@ document.addEventListener("keydown", event => {
 
 render();
 
-window.addEventListener("firebase-ready", () => {
+/* MEMERIKSA STATUS ADMIN DARI FIRESTORE */
+async function cekStatusAdmin(user) {
+  if (!user || !firebaseSiap()) return false;
+
+  try {
+    const { doc, getDoc } = window.firebaseFuncs;
+
+    const adminRef = doc(
+      window.firebaseDB,
+      "admins",
+      user.uid
+    );
+
+    const adminSnap = await getDoc(adminRef);
+
+    return adminSnap.exists() &&
+      adminSnap.data().role === "admin";
+
+  } catch (error) {
+    console.error("Gagal memeriksa status admin:", error);
+    return false;
+  }
+}
+
+let authListenerTerpasang = false;
+
+function mulaiPantauAuth() {
+  if (!firebaseSiap() || authListenerTerpasang) return;
+
+  authListenerTerpasang = true;
+
   window.firebaseFuncs.onAuthStateChanged(
     window.firebaseAuth,
     async user => {
-      isAdmin = !!user;
+      isLoggedIn = !!user;
+      isAdmin = false;
+
       render();
 
-      await muatDataDariFirebase();
+      if (user) {
+        isAdmin = await cekStatusAdmin(user);
+      }
+
+      render();
+
+      const dataBerhasil = await muatDataDariFirebase();
+
       await muatPengaturanGlobal();
+
+      if (user && !isAdmin) {
+        setStatus(
+          "Login berhasil, tetapi akun ini belum terdaftar sebagai admin di Firestore.",
+          true
+        );
+      } else if (user && isAdmin) {
+        setStatus("Login sebagai admin berhasil.");
+      } else if (!dataBerhasil) {
+        setStatus(
+          "Gagal membaca Firestore. Periksa koneksi dan Firestore Security Rules.",
+          true
+        );
+      }
     }
   );
-});
+}
+
+window.addEventListener("firebase-ready", mulaiPantauAuth);
 
 window.addEventListener("firebase-error", () => {
   setStatus(
@@ -545,5 +650,5 @@ window.addEventListener("firebase-error", () => {
 });
 
 if (window.firebaseReady) {
-  window.dispatchEvent(new Event("firebase-ready"));
+  mulaiPantauAuth();
 }
