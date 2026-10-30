@@ -1,26 +1,83 @@
+
+/* ==========================================
+   THE VELMORIC CODEX
+   DATA & UTILITIES
+========================================== */
+
 const STORAGE_KEY = "wikikarakter_v1";
 
+/* ==========================================
+   MEMBUAT ID LOKAL
+========================================== */
+
 function uid() {
-  return "c" + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+  return (
+    "c" +
+    Date.now().toString(36) +
+    Math.random().toString(36).slice(2, 9)
+  );
 }
 
-function esc(s) {
-  return String(s ?? "").replace(/[&<>"']/g, c => ({
-    "&": "&amp;",
-    "<": "&lt;",
-    ">": "&gt;",
-    '"': "&quot;",
-    "'": "&#39;"
-  }[c]));
+/* ==========================================
+   HTML ESCAPE
+========================================== */
+
+function esc(value) {
+  return String(value ?? "").replace(
+    /[&<>"']/g,
+    character => ({
+      "&": "&amp;",
+      "<": "&lt;",
+      ">": "&gt;",
+      '"': "&quot;",
+      "'": "&#39;"
+    })[character]
+  );
 }
+
+/* ==========================================
+   STRUKTUR DATA KARAKTER
+========================================== */
+
+function buatDataKarakter(data = {}) {
+  return {
+    nama: data.nama || "",
+    kategori: data.kategori || "Karakter",
+
+    avatar: data.avatar || "",
+    foto: data.foto || "",
+
+    gelar: data.gelar || "",
+    ras: data.ras || "",
+    gender: data.gender || "",
+
+    usia: data.usia || "",
+    tinggi: data.tinggi || "",
+    berat: data.berat || "",
+
+    asal: data.asal || "",
+    afiliasi: data.afiliasi || "",
+    status: data.status || "",
+    kelas: data.kelas || "",
+
+    deskripsi: data.deskripsi || "",
+    kepribadian: data.kepribadian || "",
+    latar: data.latar || "",
+    kemampuan: data.kemampuan || "",
+    kelemahan: data.kelemahan || ""
+  };
+}
+
+/* ==========================================
+   DATA CONTOH
+   HANYA UNTUK REFERENSI
+========================================== */
 
 function defaultData() {
   return [
-    {
-      id: uid(),
+    buatDataKarakter({
       nama: "Arka Wijaya",
       kategori: "Karakter",
-      avatar: "🐉",
       gelar: "Sang Penjaga Naga",
       ras: "Manusia-Penjelma Naga",
       gender: "Laki-laki",
@@ -31,18 +88,22 @@ function defaultData() {
       afiliasi: "Ordo Cakrawala",
       status: "Aktif",
       kelas: "Api · Ksatria",
-      foto: "",
-      deskripsi: "Ksatria yang mengikat perjanjian darah dengan naga langit.",
-      kepribadian: "Tenang, setia, dan protektif terhadap rekan-rekannya.",
-      latar: "Dibesarkan seekor naga tua setelah desanya dihancurkan badai abadi.",
-      kemampuan: "Memanggil api naga dan bertarung dengan pedang bersisik naga.",
-      kelemahan: "Kehilangan kendali saat emosinya memuncak."
-    },
-    {
-      id: uid(),
+      foto: "https://images.unsplash.com/photo-1518709268805-4e9042af9f23?auto=format&fit=crop&w=900&q=85",
+      deskripsi:
+        "Ksatria yang mengikat perjanjian darah dengan naga langit.",
+      kepribadian:
+        "Tenang, setia, dan protektif terhadap rekan-rekannya.",
+      latar:
+        "Dibesarkan seekor naga tua setelah desanya dihancurkan badai abadi.",
+      kemampuan:
+        "Memanggil api naga dan bertarung dengan pedang bersisik naga.",
+      kelemahan:
+        "Kehilangan kendali saat emosinya memuncak."
+    }),
+
+    buatDataKarakter({
       nama: "Seraphine Moonshade",
       kategori: "Karakter",
-      avatar: "🧙‍♀️",
       gelar: "Penyihir Bulan Perak",
       ras: "Half-Elf",
       gender: "Perempuan",
@@ -53,12 +114,49 @@ function defaultData() {
       afiliasi: "Dewan Sihir Selene",
       status: "Aktif",
       kelas: "Bulan · Penyihir",
-      foto: "",
-      deskripsi: "Arsiparis sihir yang ahli dalam ramalan.",
-      kepribadian: "Cuek dan sarkastik, tetapi diam-diam peduli.",
-      latar: "Menghabiskan puluhan tahun mempelajari sihir bulan.",
-      kemampuan: "Ilusi, ramalan jangka pendek, dan manipulasi cahaya bulan.",
-      kelemahan: "Sihir melemah saat gerhana bulan."
-    }
+      foto: "https://images.unsplash.com/photo-1511497584788-876760111969?auto=format&fit=crop&w=900&q=85",
+      deskripsi:
+        "Arsiparis sihir yang ahli dalam ramalan.",
+      kepribadian:
+        "Cuek dan sarkastik, tetapi diam-diam peduli.",
+      latar:
+        "Menghabiskan puluhan tahun mempelajari sihir bulan.",
+      kemampuan:
+        "Ilusi, ramalan jangka pendek, dan manipulasi cahaya bulan.",
+      kelemahan:
+        "Sihir melemah saat gerhana bulan."
+    })
   ];
+}
+
+/* ==========================================
+   VALIDASI DATA
+========================================== */
+
+function validasiDataKarakter(data) {
+  if (!data || typeof data !== "object") {
+    return false;
+  }
+
+  if (
+    typeof data.nama !== "string" ||
+    !data.nama.trim()
+  ) {
+    return false;
+  }
+
+  return true;
+}
+
+/* ==========================================
+   NORMALISASI DATA
+========================================== */
+
+function normalisasiDataKarakter(data) {
+  const hasil = buatDataKarakter(data);
+
+  hasil.nama = hasil.nama.trim();
+  hasil.kategori = hasil.kategori.trim() || "Karakter";
+
+  return hasil;
 }
