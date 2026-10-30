@@ -657,16 +657,8 @@ function render() {
 
     }
 
-    const btnLogin = $("btnLogin");
     const btnLogout = $("btnLogout");
     const btnAdd = $("btnAdd");
-
-    if (btnLogin) {
-
-        btnLogin.hidden = isAdmin;
-        btnLogin.textContent = "Login Admin";
-
-    }
 
     if (btnLogout) {
 
@@ -1119,7 +1111,9 @@ function loginErrorMessage(error) {
 
 }
 
-$("btnLogin").onclick = () => {
+function openLogin() {
+
+    if (isAdmin) return;
 
     $("loginError").textContent = "";
 
@@ -1127,7 +1121,56 @@ $("btnLogin").onclick = () => {
 
     $("loginEmail").focus();
 
-};
+}
+
+/* ---------- Login admin tersembunyi: buka  ...#admin ---------- */
+
+let pendingAdminHash = false;
+
+function checkAdminHash() {
+
+    if (location.hash.toLowerCase() !== "#admin") return;
+
+    // Hapus #admin dari URL supaya tidak terbuka lagi saat reload.
+    history.replaceState(
+        null,
+        "",
+        location.pathname + location.search
+    );
+
+    pendingAdminHash = true;
+
+    processAdminHash();
+
+}
+
+function processAdminHash() {
+
+    if (!pendingAdminHash) return;
+
+    const { role, error } = Auth.getState();
+
+    // Tunggu sesi Firebase siap (sesi admin lama bisa dipulihkan).
+    if (role === Auth.ROLE.NONE && !error) return;
+
+    pendingAdminHash = false;
+
+    if (isAdmin) {
+
+        currentView = "admin";
+        currentId = null;
+
+        render();
+
+    } else {
+
+        openLogin();
+
+    }
+
+}
+
+window.addEventListener("hashchange", checkAdminHash);
 
 $("closeLogin").onclick = () => hide(loginOverlay);
 
@@ -1644,11 +1687,15 @@ async function onAuthChange(state) {
 
         render();
 
+        processAdminHash();
+
         return;
 
     }
 
     render();
+
+    processAdminHash();
 
     // Muat data saat pertama kali ada sesi, dan saat peran berubah.
     if (state.role !== lastRole) {
@@ -1699,3 +1746,5 @@ if (window.firebaseReady) {
     startApp();
 
 }
+
+checkAdminHash();
