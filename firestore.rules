@@ -7,7 +7,8 @@ rules_version = '2';
 //
 // - Semua sesi (termasuk pembaca anonim) boleh MEMBACA.
 // - Hanya admin (dokumen admins/{uid} dengan role == "admin")
-//   yang boleh MENULIS entri dan pengaturan.
+//   yang boleh MENULIS entri, media, dan pengaturan.
+// - Draf, revisi, dan log hanya bisa dibaca admin.
 // - Koleksi admins tidak bisa diubah dari browser sama sekali.
 // =========================================================
 
@@ -41,7 +42,34 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
-    // Pengaturan situs (tema, playlist)
+    // Draf entri: hanya terlihat & bisa diubah admin.
+    match /draf/{id} {
+      allow read, delete: if isAdmin();
+      allow create, update: if isAdmin() && validEntry();
+    }
+
+    // Riwayat revisi & log aktivitas: khusus admin.
+    // Log tidak bisa diubah/dihapus agar tetap jujur.
+    match /revisi/{id} {
+      allow read, create, delete: if isAdmin();
+      allow update: if false;
+    }
+
+    match /log/{id} {
+      allow read, create: if isAdmin();
+      allow update, delete: if false;
+    }
+
+    // Gambar terkompresi (base64). Semua sesi boleh melihat.
+    match /media/{id} {
+      allow read: if signedIn();
+      allow create, update: if isAdmin()
+        && request.resource.data.data is string
+        && request.resource.data.data.size() < 1000000;
+      allow delete: if isAdmin();
+    }
+
+    // Pengaturan situs (tema, playlist, kategori, peta)
     match /pengaturan/{id} {
       allow read: if signedIn();
       allow write: if isAdmin();

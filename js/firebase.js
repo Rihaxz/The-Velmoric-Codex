@@ -19,7 +19,9 @@ import {
 } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js";
 
 import {
-  getFirestore,
+  initializeFirestore,
+  persistentLocalCache,
+  persistentMultipleTabManager,
   collection,
   doc,
   getDoc,
@@ -28,7 +30,11 @@ import {
   updateDoc,
   deleteDoc,
   setDoc,
-  writeBatch
+  writeBatch,
+  query,
+  where,
+  orderBy,
+  limit
 } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js";
 
 const firebaseConfig = {
@@ -43,7 +49,11 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 
 export const auth = getAuth(app);
-export const db = getFirestore(app);
+// Cache offline: arsip tetap bisa dibaca tanpa internet setelah pernah
+// dibuka. Jika IndexedDB tidak tersedia, SDK otomatis memakai memori.
+export const db = initializeFirestore(app, {
+  localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() })
+});
 
 export {
   onAuthStateChanged,
@@ -58,5 +68,9 @@ export {
   updateDoc,
   deleteDoc,
   setDoc,
-  writeBatch
+  writeBatch,
+  query,
+  where,
+  orderBy,
+  limit
 };

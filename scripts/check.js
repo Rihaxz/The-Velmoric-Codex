@@ -1,17 +1,26 @@
-// Cek sintaks semua file JS di folder js/ (tanpa menjalankannya).
+// Cek sintaks semua file JS situs (tanpa menjalankannya).
 import { readdirSync } from "node:fs";
+import { join } from "node:path";
 import { execFileSync } from "node:child_process";
 
-const files = readdirSync("js").filter(name => name.endsWith(".js"));
+function listJs(dir) {
+  return readdirSync(dir, { withFileTypes: true }).flatMap(item => {
+    const path = join(dir, item.name);
+    if (item.isDirectory()) return listJs(path);
+    return item.name.endsWith(".js") ? [path] : [];
+  });
+}
+
+const files = [...listJs("js"), "sw.js"];
 let failed = 0;
 
-for (const name of files) {
+for (const file of files) {
   try {
-    execFileSync(process.execPath, ["--check", `js/${name}`], { stdio: "pipe" });
-    console.log(`ok    js/${name}`);
+    execFileSync(process.execPath, ["--check", file], { stdio: "pipe" });
+    console.log(`ok    ${file}`);
   } catch (error) {
     failed++;
-    console.error(`GAGAL js/${name}\n${error.stderr}`);
+    console.error(`GAGAL ${file}\n${error.stderr}`);
   }
 }
 
