@@ -9,9 +9,9 @@
 | Peran | Cara masuk | Hak akses |
 |-------|-----------|-----------|
 | **Pembaca** | Otomatis, anonim (tanpa form) | Hanya baca |
-| **Admin** | Tombol **Login Admin** → email + password | Baca + tambah/edit/hapus entri, pengaturan, ekspor/impor |
+| **Admin** | Buka `https://rihaxz.github.io/The-Velmoric-Codex/#admin` → email + password | Baca + tambah/edit/hapus entri, pengaturan, ekspor/impor |
 
-Dua jalur ini terpisah: pembaca tidak pernah melihat form login, dan akun email yang **bukan** admin otomatis di-sign-out lalu dikembalikan menjadi pembaca. Pengecekan di browser hanya untuk tampilan; yang benar-benar melindungi data adalah `firestore.rules`.
+Tidak ada tombol login di tampilan publik; form admin hanya muncul lewat link `#admin` (simpan sebagai bookmark). Dua jalur ini terpisah: pembaca tidak pernah melihat form login, dan akun email yang **bukan** admin otomatis di-sign-out lalu dikembalikan menjadi pembaca. Pengecekan di browser hanya untuk tampilan; yang benar-benar melindungi data adalah `firestore.rules`.
 
 ## Setup Firebase (sekali saja)
 
