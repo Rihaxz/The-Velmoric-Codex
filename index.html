@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="id">
 <head>
@@ -15,659 +14,7 @@
 
     <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 
-    <style>
-        :root {
-            --bg: #101016;
-            --panel: #191922;
-            --panel2: #20202b;
-            --text: #e8e3d8;
-            --muted: #9693a1;
-            --gold: #c8a76a;
-            --border: rgba(200,167,106,.2);
-            --danger: #bd5c66;
-            --sidebar: 260px;
-        }
-
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-        }
-
-        body {
-            background: var(--bg);
-            color: var(--text);
-            font-family: Inter, sans-serif;
-            min-height: 100vh;
-        }
-
-        body.light-mode {
-            --bg: #eeeae2;
-            --panel: #fffdf8;
-            --panel2: #e7e1d6;
-            --text: #29251f;
-            --muted: #777064;
-            --gold: #94713b;
-            --border: rgba(100,75,35,.2);
-        }
-
-        button, input, textarea, select {
-            font: inherit;
-        }
-
-        button {
-            cursor: pointer;
-        }
-
-        a {
-            color: var(--gold);
-            text-decoration: none;
-        }
-
-        .topbar {
-            height: 70px;
-            position: sticky;
-            top: 0;
-            z-index: 20;
-            display: flex;
-            align-items: center;
-            gap: 20px;
-            padding: 0 25px;
-            background: var(--panel);
-            border-bottom: 1px solid var(--border);
-        }
-
-        .brand {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            min-width: 230px;
-            border: 0;
-            color: var(--text);
-            background: transparent;
-            text-align: left;
-        }
-
-        .brand-symbol {
-            color: var(--gold);
-            font-family: Cinzel, serif;
-            font-size: 32px;
-        }
-
-        .brand-name {
-            font-family: Cinzel, serif;
-            font-weight: 700;
-            letter-spacing: 1px;
-        }
-
-        .brand small {
-            display: block;
-            color: var(--muted);
-            font-size: 9px;
-            letter-spacing: 3px;
-        }
-
-        .search-wrap {
-            flex: 1;
-            max-width: 600px;
-        }
-
-        .search-wrap input {
-            width: 100%;
-            padding: 11px 15px;
-            color: var(--text);
-            background: var(--bg);
-            border: 1px solid var(--border);
-            border-radius: 7px;
-            outline: none;
-        }
-
-        .top-actions {
-            margin-left: auto;
-            display: flex;
-            gap: 10px;
-            align-items: center;
-        }
-
-        .layout {
-            display: flex;
-            min-height: calc(100vh - 70px);
-        }
-
-        .sidebar {
-            width: var(--sidebar);
-            flex-shrink: 0;
-            padding: 25px 16px;
-            background: var(--panel);
-            border-right: 1px solid var(--border);
-        }
-
-        .side-heading {
-            margin: 20px 10px 12px;
-            color: var(--gold);
-            font-family: Cinzel, serif;
-            font-size: 12px;
-            letter-spacing: 2px;
-        }
-
-        .side-link {
-            width: 100%;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            padding: 11px;
-            margin-bottom: 5px;
-            color: var(--muted);
-            background: transparent;
-            border: 0;
-            border-radius: 6px;
-            text-align: left;
-        }
-
-        .side-link:hover,
-        .side-link.active {
-            color: var(--gold);
-            background: var(--panel2);
-        }
-
-        .side-avatar img {
-            width: 28px;
-            height: 28px;
-            object-fit: cover;
-            border-radius: 5px;
-        }
-
-        main {
-            flex: 1;
-            min-width: 0;
-            max-width: 1500px;
-            padding: 35px;
-            margin: 0 auto;
-        }
-
-        .hero {
-            position: relative;
-            overflow: hidden;
-            padding: 55px;
-            min-height: 290px;
-            background:
-                linear-gradient(90deg, rgba(12,12,19,.98), rgba(12,12,19,.75), rgba(12,12,19,.3)),
-                url("https://images.unsplash.com/photo-1518709268805-4e9042af9f23?auto=format&fit=crop&w=1600&q=85") center/cover;
-            border: 1px solid var(--border);
-            border-radius: 12px;
-        }
-
-        .hero-copy {
-            position: relative;
-            z-index: 1;
-            max-width: 650px;
-        }
-
-        .hero h1 {
-            margin: 15px 0;
-            color: #e4c58d;
-            font-family: Cinzel, serif;
-            font-size: clamp(30px, 5vw, 55px);
-        }
-
-        .hero p {
-            color: #d2c9bb;
-            line-height: 1.8;
-        }
-
-        .eyebrow {
-            color: var(--gold);
-            font-size: 11px;
-            letter-spacing: 3px;
-        }
-
-        .actions {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 10px;
-            margin-top: 25px;
-        }
-
-        .btn {
-            padding: 10px 16px;
-            color: var(--text);
-            background: var(--panel2);
-            border: 1px solid var(--border);
-            border-radius: 6px;
-        }
-
-        .btn:hover {
-            border-color: var(--gold);
-            color: var(--gold);
-        }
-
-        .btn.primary {
-            color: #18140d;
-            background: var(--gold);
-            border-color: var(--gold);
-        }
-
-        .btn.danger {
-            color: #fff;
-            background: var(--danger);
-            border-color: var(--danger);
-        }
-
-        .small-btn {
-            padding: 7px 10px;
-            margin: 10px 4px 0 0;
-            font-size: 12px;
-        }
-
-        .codex-intro {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 20px;
-            padding: 30px 5px;
-            border-bottom: 1px solid var(--border);
-        }
-
-        .codex-intro h2,
-        .archive-heading {
-            font-family: Cinzel, serif;
-        }
-
-        .codex-intro p {
-            margin-top: 8px;
-            color: var(--muted);
-            line-height: 1.7;
-        }
-
-        .intro-stat {
-            text-align: center;
-        }
-
-        .intro-stat strong {
-            display: block;
-            color: var(--gold);
-            font-family: Cinzel, serif;
-            font-size: 35px;
-        }
-
-        .intro-stat span {
-            color: var(--muted);
-            font-size: 10px;
-            letter-spacing: 2px;
-        }
-
-        .archive-heading {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 15px;
-            margin: 30px 0 20px;
-        }
-
-        .archive-heading small {
-            color: var(--muted);
-            font-family: Inter, sans-serif;
-            font-size: 12px;
-        }
-
-        .card-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
-            gap: 20px;
-        }
-
-        .card {
-            overflow: hidden;
-            background: var(--panel);
-            border: 1px solid var(--border);
-            border-radius: 9px;
-            cursor: pointer;
-            transition: .2s;
-        }
-
-        .card:hover {
-            transform: translateY(-4px);
-            border-color: var(--gold);
-        }
-
-        .avatar {
-            height: 230px;
-            overflow: hidden;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: var(--gold);
-            background: var(--panel2);
-            font-size: 50px;
-        }
-
-        .avatar img {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-        }
-
-        .card-content {
-            padding: 17px;
-        }
-
-        .card h3 {
-            margin-bottom: 8px;
-            font-family: Cinzel, serif;
-        }
-
-        .card small,
-        .muted {
-            color: var(--muted);
-        }
-
-        .card p {
-            margin-top: 12px;
-            color: var(--muted);
-            font-size: 13px;
-            line-height: 1.7;
-        }
-
-        .page-title {
-            margin: 25px 0 8px;
-            font-family: Cinzel, serif;
-            font-size: clamp(27px, 5vw, 42px);
-        }
-
-        .article-grid {
-            display: grid;
-            grid-template-columns: minmax(0, 1fr) 300px;
-            gap: 30px;
-            margin-top: 30px;
-        }
-
-        .toc,
-        .section,
-        .infobox {
-            padding: 22px;
-            margin-bottom: 20px;
-            background: var(--panel);
-            border: 1px solid var(--border);
-            border-radius: 8px;
-        }
-
-        .toc ol {
-            padding-left: 22px;
-            margin-top: 15px;
-            line-height: 2;
-        }
-
-        .section h2 {
-            margin-bottom: 15px;
-            color: var(--gold);
-            font-family: Cinzel, serif;
-        }
-
-        .section p {
-            color: var(--muted);
-            line-height: 1.9;
-        }
-
-        .infobox h2 {
-            margin-bottom: 15px;
-            font-family: Cinzel, serif;
-        }
-
-        .infobox-img {
-            height: 250px;
-            overflow: hidden;
-            margin-bottom: 15px;
-            background: var(--panel2);
-        }
-
-        .infobox-img img {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-        }
-
-        .infobox table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-
-        .infobox th,
-        .infobox td {
-            padding: 10px 5px;
-            border-bottom: 1px solid var(--border);
-            text-align: left;
-            font-size: 12px;
-        }
-
-        .infobox th {
-            color: var(--gold);
-        }
-
-        .empty {
-            padding: 25px;
-            color: var(--muted);
-        }
-
-        .status {
-            padding: 10px;
-            color: var(--gold);
-        }
-
-        .error {
-            padding: 10px;
-            color: #ff8d8d;
-        }
-
-        /* MODALS */
-
-        .modal-overlay {
-            position: fixed;
-            inset: 0;
-            z-index: 100;
-            display: none;
-            align-items: center;
-            justify-content: center;
-            padding: 15px;
-            background: rgba(0,0,0,.78);
-            backdrop-filter: blur(7px);
-        }
-
-        .modal-overlay.show {
-            display: flex;
-        }
-
-        .modal {
-            width: 100%;
-            max-width: 650px;
-            max-height: 90vh;
-            overflow-y: auto;
-            padding: 25px;
-            background: var(--panel);
-            border: 1px solid var(--border);
-            border-radius: 10px;
-        }
-
-        .modal h2 {
-            margin-bottom: 20px;
-            color: var(--gold);
-            font-family: Cinzel, serif;
-        }
-
-        .form-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 15px;
-        }
-
-        .field {
-            margin-bottom: 15px;
-        }
-
-        .field.full {
-            grid-column: 1 / -1;
-        }
-
-        .field label {
-            display: block;
-            margin-bottom: 7px;
-            color: var(--muted);
-            font-size: 12px;
-        }
-
-        .field input,
-        .field textarea,
-        .field select {
-            width: 100%;
-            padding: 11px;
-            color: var(--text);
-            background: var(--bg);
-            border: 1px solid var(--border);
-            border-radius: 5px;
-            outline: none;
-        }
-
-        .field textarea {
-            min-height: 100px;
-            resize: vertical;
-        }
-
-        .field input:focus,
-        .field textarea:focus {
-            border-color: var(--gold);
-        }
-
-        .modal-actions {
-            display: flex;
-            justify-content: flex-end;
-            gap: 10px;
-            margin-top: 20px;
-        }
-
-        .modal-close {
-            float: right;
-            color: var(--muted);
-            background: none;
-            border: 0;
-            font-size: 25px;
-        }
-
-        #fotoPreview {
-            max-width: 120px;
-            max-height: 120px;
-            object-fit: cover;
-            margin-top: 10px;
-            border-radius: 6px;
-        }
-
-        .no-scroll {
-            overflow: hidden;
-        }
-
-        #navAdmin,
-        #btnLogout,
-        #btnAdd {
-            display: none;
-        }
-
-        #navAdmin:not([hidden]),
-        #btnLogout:not([hidden]),
-        #btnAdd:not([hidden]) {
-            display: inline-flex;
-        }
-
-        #btnImport {
-            display: none;
-        }
-
-        .mobile-menu {
-            display: none;
-        }
-
-        @media(max-width: 850px) {
-            .sidebar {
-                position: fixed;
-                z-index: 30;
-                top: 70px;
-                bottom: 0;
-                left: 0;
-                transform: translateX(-100%);
-                transition: .2s;
-            }
-
-            .sidebar.open {
-                transform: translateX(0);
-            }
-
-            .mobile-menu {
-                display: inline-flex;
-            }
-
-            .brand {
-                min-width: auto;
-            }
-
-            .brand small {
-                display: none;
-            }
-
-            main {
-                padding: 20px;
-            }
-
-            .article-grid {
-                grid-template-columns: 1fr;
-            }
-
-            .infobox {
-                grid-row: 1;
-            }
-        }
-
-        @media(max-width: 550px) {
-            .topbar {
-                gap: 10px;
-                padding: 0 12px;
-            }
-
-            .brand-name {
-                font-size: 11px;
-            }
-
-            .brand-symbol {
-                font-size: 24px;
-            }
-
-            .search-wrap input {
-                padding: 9px;
-                font-size: 12px;
-            }
-
-            .top-actions {
-                gap: 5px;
-            }
-
-            .top-actions .btn {
-                padding: 8px;
-                font-size: 11px;
-            }
-
-            .hero {
-                padding: 30px 20px;
-            }
-
-            .codex-intro {
-                align-items: flex-start;
-            }
-
-            .form-grid {
-                grid-template-columns: 1fr;
-            }
-
-            .field.full {
-                grid-column: auto;
-            }
-        }
-    </style>
+    <link rel="stylesheet" href="css/style.css">
 </head>
 
 <body>
@@ -898,7 +245,8 @@
         <h2>Administrator Access</h2>
 
         <p style="color:var(--muted);font-size:13px;margin-bottom:20px">
-            Masuk menggunakan akun administrator.
+            Khusus administrator. Pembaca tidak perlu login;
+            kamu otomatis masuk sebagai pembaca anonim.
         </p>
 
         <form id="loginForm">
@@ -979,6 +327,41 @@
 
 </div>
 
+<!-- STATUS / TOAST -->
+
+<div id="appStatus" class="toast status" role="status" aria-live="polite" hidden></div>
+
+<!-- PEMUTAR MUSIK -->
+
+<audio id="bgMusic" preload="metadata"></audio>
+
+<div class="bottom-player" id="musicPlayer" aria-label="Pemutar musik">
+
+    <span class="track-title" id="trackTitle">Belum ada musik</span>
+
+    <div class="player-controls">
+
+        <button type="button" class="player-btn" id="btnPrevTrack" aria-label="Lagu sebelumnya">⏮</button>
+
+        <button type="button" class="player-btn" id="btnPlayPause" aria-label="Putar atau jeda">
+            <span id="iconPlay">▶</span>
+            <span id="iconPause" hidden>⏸</span>
+        </button>
+
+        <button type="button" class="player-btn" id="btnNextTrack" aria-label="Lagu berikutnya">⏭</button>
+
+    </div>
+
+    <div class="player-progress">
+        <span id="timeCurrent">0:00</span>
+        <div class="progress-bar" id="progressBar">
+            <div class="progress-fill" id="progressFill"></div>
+        </div>
+        <span id="timeTotal">0:00</span>
+    </div>
+
+</div>
+
 <!-- BACKUP -->
 
 <input
@@ -995,6 +378,7 @@
 
 <script src="js/data.js"></script>
 <script src="js/storage.js"></script>
+<script src="js/auth.js"></script>
 <script src="js/music-player.js"></script>
 <script src="js/logic.js"></script>
 
@@ -1025,7 +409,8 @@
     } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js";
 
     /*
-       GANTI CONFIG INI DENGAN FIREBASE CONFIG MILIK LU.
+       Config Firebase proyekmu. (Kunci web Firebase memang publik;
+       keamanan data dijaga oleh firestore.rules.)
 
        Firebase Console:
        Project Settings
