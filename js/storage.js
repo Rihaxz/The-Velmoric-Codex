@@ -1,16 +1,14 @@
-
 /* =========================================================
    THE VELMORIC CODEX
    storage.js
    Firebase Firestore Storage Manager
+
+   Semua fungsi melempar error jika gagal; pemanggil (logic.js)
+   yang menampilkan pesan ke pengguna.
 ========================================================= */
 
 (() => {
   "use strict";
-
-  // =======================================================
-  // KONFIGURASI FIREBASE
-  // =======================================================
 
   const COLLECTION_KARAKTER = "karakter";
   const COLLECTION_PENGATURAN = "pengaturan";
@@ -28,18 +26,10 @@
     return window.firebaseDB;
   }
 
-  function getFirebaseFuncs() {
-    if (!window.firebaseFuncs) {
-      throw new Error("Firebase functions belum tersedia.");
-    }
-
-    return window.firebaseFuncs;
-  }
-
   function getFunction(name) {
-    const funcs = getFirebaseFuncs();
+    const funcs = window.firebaseFuncs;
 
-    if (typeof funcs[name] !== "function") {
+    if (!funcs || typeof funcs[name] !== "function") {
       throw new Error(`Firebase function "${name}" tidak ditemukan.`);
     }
 
@@ -50,19 +40,29 @@
     return new Date().toISOString();
   }
 
+  function logError(action, error) {
+    console.error(`[Velmoric Storage] ${action}:`, error);
+    return error;
+  }
+
+  function currentCharacters() {
+    return Array.isArray(window.characters) ? window.characters : [];
+  }
+
   function normalizeSettings(settings = {}) {
-    const theme =
-      settings.theme === "light" ? "light" : "dark";
+    const source = settings && typeof settings === "object" ? settings : {};
+
+    const theme = source.theme === "light" ? "light" : "dark";
 
     let musicUrls = [];
 
-    if (Array.isArray(settings.musicUrls)) {
-      musicUrls = settings.musicUrls;
+    if (Array.isArray(source.musicUrls)) {
+      musicUrls = source.musicUrls;
     } else if (
-      typeof settings.musicUrl === "string" &&
-      settings.musicUrl.trim()
+      typeof source.musicUrl === "string" &&
+      source.musicUrl.trim()
     ) {
-      musicUrls = [settings.musicUrl.trim()];
+      musicUrls = [source.musicUrl.trim()];
     }
 
     musicUrls = musicUrls
@@ -77,97 +77,55 @@
     };
   }
 
-  function updateLocalCharacters(data) {
-    window.characters = data;
-
-    // Menyinkronkan variabel global dari data.js,
-    // jika variabel tersebut memang tersedia.
-    try {
-      if (typeof characters !== "undefined") {
-        characters = data;
-      }
-    } catch (error) {
-      console.warn("Tidak dapat menyinkronkan characters:", error);
-    }
-  }
-
-  function updateLocalSettings(settings) {
-    window.globalSettings = settings;
-
-    try {
-      if (typeof globalSettings !== "undefined") {
-        globalSettings = settings;
-      }
-    } catch (error) {
-      console.warn("Tidak dapat menyinkronkan globalSettings:", error);
-    }
-  }
-
-  function showStorageError(action, error) {
-    console.error(`[Velmoric Storage] ${action}:`, error);
-    throw error;
-  }
-
   // =======================================================
-  // MEMUAT DATA KARAKTER
+  // MEMUAT DATA
   // =======================================================
 
   async function muatDataDariFirebase() {
     try {
       const db = getFirebaseDB();
-
       const collection = getFunction("collection");
       const getDocs = getFunction("getDocs");
 
-      const karakterRef = collection(
-        db,
-        COLLECTION_KARAKTER
+      const snapshot = await getDocs(
+        collection(db, COLLECTION_KARAKTER)
       );
-
-      const snapshot = await getDocs(karakterRef);
 
       const data = [];
 
       snapshot.forEach(document => {
-        data.push({
-          id: document.id,
-          ...document.data()
-        });
+        data.push({ id: document.id, ...document.data() });
       });
 
-      // Urutkan berdasarkan waktu pembuatan.
-      data.sort((a, b) => {
-        const waktuA = a.dibuatPada || "";
-        const waktuB = b.dibuatPada || "";
-
-        return waktuB.localeCompare(waktuA);
-      });
-
-      updateLocalCharacters(data);
-
-      console.log(
-        `[Velmoric Storage] ${data.length} karakter berhasil dimuat.`
+      // Terbaru dulu.
+      data.sort((a, b) =>
+        String(b.dibuatPada || "").localeCompare(
+          String(a.dibuatPada || "")
+        )
       );
+
+      window.characters = data;
+
+      console.log(`[Velmoric Storage] ${data.length} entri dimuat.`);
 
       return data;
 
     } catch (error) {
-      showStorageError("Gagal memuat karakter", error);
+      throw logError("Gagal memuat entri", error);
     }
   }
 
   // =======================================================
-  // MENAMBAH KARAKTER
+  // MENAMBAH ENTRI
   // =======================================================
 
   async function simpanDataKeFirebase(dataKarakter) {
     try {
       if (!dataKarakter || typeof dataKarakter !== "object") {
-        throw new Error("Data karakter tidak valid.");
+        throw new Error("Data entri tidak valid.");
       }
 
       const db = getFirebaseDB();
-
       const collection = getFunction("collection");
       const addDoc = getFunction("addDoc");
 
@@ -175,74 +133,50 @@
 
       const data = {
         ...dataKarakter,
-
         nama: String(dataKarakter.nama || "").trim(),
-
-        kategori:
-          String(dataKarakter.kategori || "Lainnya").trim(),
-
-        dibuatPada:
-          dataKarakter.dibuatPada || waktu,
-
+        kategori: String(dataKarakter.kategori || "Lainnya").trim(),
+        dibuatPada: dataKarakter.dibuatPada || waktu,
         diperbaruiPada: waktu
       };
 
+      // ID dibuat Firestore; jangan disimpan sebagai field.
+      delete data.id;
+
       if (!data.nama) {
-        throw new Error("Nama karakter tidak boleh kosong.");
+        throw new Error("Nama entri tidak boleh kosong.");
       }
 
-      const karakterRef = collection(
-        db,
-        COLLECTION_KARAKTER
-      );
-
       const result = await addDoc(
-        karakterRef,
+        collection(db, COLLECTION_KARAKTER),
         data
       );
 
-      const karakterBaru = {
-        id: result.id,
-        ...data
-      };
+      const baru = { id: result.id, ...data };
 
-      const current = Array.isArray(window.characters)
-        ? window.characters
-        : [];
+      window.characters = [baru, ...currentCharacters()];
 
-      updateLocalCharacters([
-        karakterBaru,
-        ...current
-      ]);
-
-      console.log(
-        "[Velmoric Storage] Karakter berhasil ditambahkan:",
-        karakterBaru.nama
-      );
-
-      return karakterBaru;
+      return baru;
 
     } catch (error) {
-      showStorageError("Gagal menyimpan karakter", error);
+      throw logError("Gagal menyimpan entri", error);
     }
   }
 
   // =======================================================
-  // MEMPERBARUI KARAKTER
+  // MEMPERBARUI ENTRI
   // =======================================================
 
   async function updateDataDiFirebase(id, dataKarakter) {
     try {
       if (!id) {
-        throw new Error("ID karakter tidak ditemukan.");
+        throw new Error("ID entri tidak ditemukan.");
       }
 
       if (!dataKarakter || typeof dataKarakter !== "object") {
-        throw new Error("Data karakter tidak valid.");
+        throw new Error("Data entri tidak valid.");
       }
 
       const db = getFirebaseDB();
-
       const doc = getFunction("doc");
       const updateDoc = getFunction("updateDoc");
 
@@ -251,269 +185,157 @@
         diperbaruiPada: getTimestamp()
       };
 
+      delete data.id;
+      delete data.dibuatPada; // tanggal dibuat tidak boleh berubah
+
       if (data.nama !== undefined) {
         data.nama = String(data.nama).trim();
 
         if (!data.nama) {
-          throw new Error("Nama karakter tidak boleh kosong.");
+          throw new Error("Nama entri tidak boleh kosong.");
         }
       }
 
-      const karakterRef = doc(
-        db,
-        COLLECTION_KARAKTER,
-        id
+      await updateDoc(doc(db, COLLECTION_KARAKTER, id), data);
+
+      window.characters = currentCharacters().map(item =>
+        item.id === id ? { ...item, ...data, id } : item
       );
 
-      await updateDoc(
-        karakterRef,
-        data
-      );
-
-      const current = Array.isArray(window.characters)
-        ? window.characters
-        : [];
-
-      const updated = current.map(character => {
-        if (character.id !== id) {
-          return character;
-        }
-
-        return {
-          ...character,
-          ...data,
-          id
-        };
-      });
-
-      updateLocalCharacters(updated);
-
-      console.log(
-        "[Velmoric Storage] Karakter berhasil diperbarui:",
-        id
-      );
-
-      return {
-        id,
-        ...data
-      };
+      return { id, ...data };
 
     } catch (error) {
-      showStorageError("Gagal memperbarui karakter", error);
+      throw logError("Gagal memperbarui entri", error);
     }
   }
 
   // =======================================================
-  // MENGHAPUS KARAKTER
+  // MENGHAPUS ENTRI
   // =======================================================
 
   async function hapusDataDariFirebase(id) {
     try {
       if (!id) {
-        throw new Error("ID karakter tidak ditemukan.");
+        throw new Error("ID entri tidak ditemukan.");
       }
 
       const db = getFirebaseDB();
-
       const doc = getFunction("doc");
       const deleteDoc = getFunction("deleteDoc");
 
-      const karakterRef = doc(
-        db,
-        COLLECTION_KARAKTER,
-        id
-      );
+      await deleteDoc(doc(db, COLLECTION_KARAKTER, id));
 
-      await deleteDoc(karakterRef);
-
-      const current = Array.isArray(window.characters)
-        ? window.characters
-        : [];
-
-      const updated = current.filter(
-        character => character.id !== id
-      );
-
-      updateLocalCharacters(updated);
-
-      console.log(
-        "[Velmoric Storage] Karakter berhasil dihapus:",
-        id
+      window.characters = currentCharacters().filter(
+        item => item.id !== id
       );
 
       return true;
 
     } catch (error) {
-      showStorageError("Gagal menghapus karakter", error);
+      throw logError("Gagal menghapus entri", error);
     }
   }
 
   // =======================================================
-  // MEMUAT PENGATURAN GLOBAL
+  // PENGATURAN GLOBAL
   // =======================================================
 
+  /**
+   * Hanya MEMBACA. Jika dokumen belum ada, pakai nilai bawaan.
+   * (Versi lama mencoba menulis dokumen default dari sesi
+   * pembaca anonim -> selalu ditolak oleh rules.)
+   */
   async function muatPengaturanGlobal() {
     try {
       const db = getFirebaseDB();
-
       const doc = getFunction("doc");
       const getDoc = getFunction("getDoc");
-      const setDoc = getFunction("setDoc");
 
-      const settingsRef = doc(
-        db,
-        COLLECTION_PENGATURAN,
-        SETTINGS_DOCUMENT
+      const snapshot = await getDoc(
+        doc(db, COLLECTION_PENGATURAN, SETTINGS_DOCUMENT)
       );
 
-      const snapshot = await getDoc(settingsRef);
-
-      let settings;
-
-      if (snapshot.exists()) {
-        settings = normalizeSettings(snapshot.data());
-      } else {
-        settings = normalizeSettings();
-
-        await setDoc(
-          settingsRef,
-          settings
-        );
-      }
-
-      updateLocalSettings(settings);
+      const settings = normalizeSettings(
+        snapshot.exists() ? snapshot.data() : {}
+      );
 
       applyGlobalSettings(settings);
-
-      console.log(
-        "[Velmoric Storage] Pengaturan global berhasil dimuat."
-      );
 
       return settings;
 
     } catch (error) {
-      showStorageError("Gagal memuat pengaturan global", error);
+      throw logError("Gagal memuat pengaturan", error);
     }
   }
 
-  // =======================================================
-  // MENERAPKAN PENGATURAN GLOBAL
-  // =======================================================
-
+  /**
+   * Menerapkan tema + playlist ke halaman.
+   * Tema memakai class `light-mode` pada <body> (sesuai CSS).
+   */
   function applyGlobalSettings(settings = {}) {
     const normalized = normalizeSettings(settings);
 
-    // Terapkan tema.
-    document.documentElement.setAttribute(
-      "data-theme",
-      normalized.theme
-    );
+    window.globalSettings = normalized;
+    window.musicPlaylist = normalized.musicUrls;
 
-    document.documentElement.classList.toggle(
-      "light-theme",
+    document.documentElement.setAttribute("data-theme", normalized.theme);
+
+    document.body.classList.toggle(
+      "light-mode",
       normalized.theme === "light"
     );
 
-    document.documentElement.classList.toggle(
-      "dark-theme",
-      normalized.theme === "dark"
-    );
-
-    // Sinkronkan playlist.
-    window.musicPlaylist = normalized.musicUrls;
-
-    try {
-      if (typeof musicPlaylist !== "undefined") {
-        musicPlaylist = normalized.musicUrls;
-      }
-    } catch (error) {
-      console.warn("Gagal menyinkronkan playlist:", error);
+    if (window.MusicPlayer) {
+      window.MusicPlayer.setPlaylist(normalized.musicUrls);
     }
-
-    // Perbarui sumber musik jika fungsi tersedia.
-    if (
-      normalized.musicUrls.length > 0 &&
-      typeof window.loadTrack === "function"
-    ) {
-      try {
-        window.loadTrack(0);
-      } catch (error) {
-        console.warn("Gagal memuat track musik:", error);
-      }
-    }
-
-    updateLocalSettings(normalized);
 
     return normalized;
   }
 
-  // =======================================================
-  // MENYIMPAN PENGATURAN GLOBAL
-  // =======================================================
-
-  async function simpanPengaturanGlobal(settings = {}) {
+  /**
+   * Menerima objek { theme, musicUrls }
+   * ATAU gaya lama: (theme, musicUrls[]).
+   */
+  async function simpanPengaturanGlobal(arg1 = {}, arg2) {
     try {
-      const db = getFirebaseDB();
+      const input =
+        typeof arg1 === "string"
+          ? { theme: arg1, musicUrls: arg2 }
+          : arg1;
 
+      const db = getFirebaseDB();
       const doc = getFunction("doc");
       const setDoc = getFunction("setDoc");
 
-      const normalized = normalizeSettings(settings);
-
-      const settingsRef = doc(
-        db,
-        COLLECTION_PENGATURAN,
-        SETTINGS_DOCUMENT
-      );
+      const normalized = normalizeSettings(input);
 
       await setDoc(
-        settingsRef,
+        doc(db, COLLECTION_PENGATURAN, SETTINGS_DOCUMENT),
         normalized,
         { merge: true }
       );
 
-      updateLocalSettings(normalized);
-
       applyGlobalSettings(normalized);
-
-      console.log(
-        "[Velmoric Storage] Pengaturan berhasil disimpan."
-      );
 
       return normalized;
 
     } catch (error) {
-      showStorageError("Gagal menyimpan pengaturan global", error);
+      throw logError("Gagal menyimpan pengaturan", error);
     }
   }
 
   // =======================================================
-  // EXPORT DATA UNTUK LOGIC.JS
+  // EXPORT
   // =======================================================
 
-  window.muatDataDariFirebase =
-    muatDataDariFirebase;
+  window.muatDataDariFirebase = muatDataDariFirebase;
+  window.simpanDataKeFirebase = simpanDataKeFirebase;
+  window.updateDataDiFirebase = updateDataDiFirebase;
+  window.hapusDataDariFirebase = hapusDataDariFirebase;
+  window.muatPengaturanGlobal = muatPengaturanGlobal;
+  window.applyGlobalSettings = applyGlobalSettings;
+  window.simpanPengaturanGlobal = simpanPengaturanGlobal;
 
-  window.simpanDataKeFirebase =
-    simpanDataKeFirebase;
-
-  window.updateDataDiFirebase =
-    updateDataDiFirebase;
-
-  window.hapusDataDariFirebase =
-    hapusDataDariFirebase;
-
-  window.muatPengaturanGlobal =
-    muatPengaturanGlobal;
-
-  window.applyGlobalSettings =
-    applyGlobalSettings;
-
-  window.simpanPengaturanGlobal =
-    simpanPengaturanGlobal;
-
-  console.log(
-    "[Velmoric Storage] Storage manager berhasil dimuat."
-  );
+  console.log("[Velmoric Storage] Storage manager dimuat.");
 
 })();
