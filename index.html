@@ -5,14 +5,24 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
     <meta name="theme-color" content="#101016">
-    <meta name="description" content="The Velmoric Codex - Fantasy World Encyclopedia">
+    <meta name="description" content="The Velmoric Codex — arsip hidup dunia fantasi Velmor: tokoh, kerajaan, makhluk, sihir, peta, dan linimasa.">
+
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="The Velmoric Codex">
+    <meta property="og:description" content="Arsip hidup dunia fantasi Velmor: tokoh, kerajaan, makhluk, sihir, peta, dan linimasa.">
+    <meta property="og:image" content="https://rihaxz.github.io/The-Velmoric-Codex/icons/og-image.png">
+    <meta name="twitter:card" content="summary_large_image">
+
+    <link rel="manifest" href="manifest.webmanifest">
+    <link rel="icon" href="icons/icon-192.png" type="image/png">
+    <link rel="apple-touch-icon" href="icons/icon-192.png">
 
     <title>The Velmoric Codex</title>
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 
-    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600;700;800&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 
     <link rel="stylesheet" href="css/style.css">
 
@@ -49,6 +59,8 @@
             id="search"
             type="search"
             placeholder="Cari karakter, kerajaan, artefak..."
+            aria-label="Cari di seluruh arsip"
+            autocomplete="off"
         >
     </div>
 
@@ -72,13 +84,16 @@
 
         <p class="side-heading">NAVIGASI</p>
 
-        <button class="side-link active" id="navHome">
-            ◈ Beranda
-        </button>
-
-        <button class="side-link" id="navAdmin" hidden>
-            ⚙ Panel Admin
-        </button>
+        <nav class="side-nav" aria-label="Navigasi utama">
+            <a class="side-link" data-nav="home" href="#/">◈ Beranda</a>
+            <a class="side-link" data-nav="jelajah" href="#/jelajah">⌕ Jelajah</a>
+            <a class="side-link" data-nav="linimasa" href="#/linimasa">⌛ Linimasa</a>
+            <a class="side-link" data-nav="peta" href="#/peta">⌖ Peta Dunia</a>
+            <a class="side-link" data-nav="bestiari" href="#/bestiari">☠ Bestiari</a>
+            <a class="side-link" data-nav="tersimpan" href="#/tersimpan">★ Tersimpan</a>
+            <a class="side-link" data-nav="acak" href="#/acak">✧ Entri Acak</a>
+            <a class="side-link" data-nav="admin" href="#/admin" hidden>⚙ Panel Admin</a>
+        </nav>
 
         <p class="side-heading">ARSIP DUNIA</p>
 
@@ -104,7 +119,7 @@
 
 <div class="modal-overlay" id="overlay">
 
-    <div class="modal">
+    <div class="modal modal-wide">
 
         <button class="modal-close" id="closeModal" aria-label="Tutup">×</button>
 
@@ -121,8 +136,12 @@
                     Batal
                 </button>
 
-                <button type="submit" class="btn primary" id="submitBtn">
-                    Simpan Entri
+                <button type="submit" class="btn" id="btnDraft">
+                    Simpan Draf
+                </button>
+
+                <button type="submit" class="btn primary" id="btnPublish">
+                    Terbitkan
                 </button>
 
             </div>
@@ -226,6 +245,45 @@
 
 </div>
 
+<!-- RIWAYAT REVISI -->
+
+<div class="modal-overlay" id="historyModal">
+
+    <div class="modal">
+
+        <button class="modal-close" id="closeHistory" aria-label="Tutup">×</button>
+
+        <h2 id="historyTitle">Riwayat</h2>
+
+        <div id="historyBody"></div>
+
+    </div>
+
+</div>
+
+<!-- LIGHTBOX GALERI -->
+
+<div class="modal-overlay lightbox" id="lightbox">
+
+    <div class="lightbox-box">
+
+        <button class="modal-close" id="closeLightbox" aria-label="Tutup">×</button>
+
+        <button class="lightbox-nav prev" id="lightboxPrev" aria-label="Gambar sebelumnya">‹</button>
+
+        <div class="lightbox-image" id="lightboxImage"></div>
+
+        <button class="lightbox-nav next" id="lightboxNext" aria-label="Gambar berikutnya">›</button>
+
+        <p class="lightbox-caption" id="lightboxCaption"></p>
+
+    </div>
+
+</div>
+
+<datalist id="entryOptions"></datalist>
+<datalist id="eraOptions"></datalist>
+
 <!-- STATUS / TOAST -->
 
 <div id="appStatus" class="toast status" role="status" aria-live="polite" hidden></div>
@@ -267,6 +325,7 @@
     type="file"
     id="btnImport"
     accept=".json,application/json"
+    hidden
 >
 
 <!-- APLIKASI (modul ES; config Firebase ada di js/firebase.js) -->
