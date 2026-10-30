@@ -1,238 +1,173 @@
 /* =========================================================
-   THE VELMORIC CODEX
-   auth.js
+   THE VELMORIC CODEX — auth.js
    Dua jalur masuk yang terpisah:
 
-   1. PEMBACA  -> otomatis, anonim, tanpa form (read-only)
-   2. ADMIN    -> hanya lewat email + password, lalu diverifikasi
-                  lewat dokumen admins/{uid} di Firestore.
+   1. PEMBACA -> otomatis, anonim, tanpa form (hanya baca)
+   2. ADMIN   -> email + password, lalu diverifikasi lewat
+                 dokumen admins/{uid} di Firestore.
 
    Akun email yang BUKAN admin langsung di-sign-out dan
-   dikembalikan ke sesi pembaca anonim.
+   dikembalikan menjadi pembaca anonim.
 
-   Catatan keamanan: pengecekan di sini hanya untuk tampilan (UI).
-   Penegakan sebenarnya ada di firestore.rules.
+   Pengecekan di sini hanya untuk tampilan. Penegakan
+   sebenarnya ada di firestore.rules.
 ========================================================= */
 
-(() => {
-  "use strict";
+import {
+  auth,
+  db,
+  doc,
+  getDoc,
+  onAuthStateChanged,
+  signInAnonymously,
+  signInWithEmailAndPassword,
+  signOut
+} from "./firebase.js";
 
-  const ROLE = Object.freeze({
-    NONE: "none",     // belum ada sesi (sedang masuk / gagal)
-    READER: "reader", // anonim, hanya baca
-    ADMIN: "admin"    // email + terdaftar di admins/{uid}
-  });
+import { codeError } from "./utils.js";
 
-  const LOGIN_TIMEOUT_MS = 20000;
+export const ROLE = Object.freeze({
+  NONE: "none",     // belum ada sesi (sedang masuk / gagal)
+  READER: "reader", // anonim, hanya baca
+  ADMIN: "admin"    // email + terdaftar di admins/{uid}
+});
 
-  let started = false;
-  let state = { role: ROLE.NONE, user: null, error: null };
-  let pendingLogin = null;
+const LOGIN_TIMEOUT_MS = 20000;
 
-  const listeners = new Set();
+let started = false;
+let state = Object.freeze({ role: ROLE.NONE, user: null, error: null });
+let pendingLogin = null;
 
-  // =======================================================
-  // HELPER
-  // =======================================================
+const listeners = new Set();
 
-  function funcs() {
-    if (!window.firebaseFuncs) {
-      throw codeError("auth/not-ready", "Firebase belum siap.");
+function publish(role, user = null, error = null) {
+  state = Object.freeze({ role, user, error });
+
+  for (const listener of listeners) {
+    try {
+      listener(state);
+    } catch (err) {
+      console.error("[Velmoric Auth] listener error:", err);
     }
-
-    return window.firebaseFuncs;
   }
+}
 
-  function auth() {
-    if (!window.firebaseAuth) {
-      throw codeError("auth/not-ready", "Firebase Auth belum siap.");
-    }
+async function isVerifiedAdmin(user) {
+  if (!user || user.isAnonymous) return false;
 
-    return window.firebaseAuth;
+  try {
+    const snapshot = await getDoc(doc(db, "admins", user.uid));
+    return snapshot.exists() && snapshot.data().role === "admin";
+  } catch (error) {
+    console.error("[Velmoric Auth] Pemeriksaan admin gagal:", error);
+    return false;
   }
+}
 
-  function codeError(code, message) {
-    const error = new Error(message || code);
-    error.code = code;
-    return error;
-  }
-
-  function deferred() {
-    const d = {};
-
-    d.promise = new Promise((resolve, reject) => {
-      d.resolve = resolve;
-      d.reject = reject;
-    });
-
-    // Cegah peringatan "unhandled rejection" bila ditolak
-    // sebelum ada yang sempat menunggu.
-    d.promise.catch(() => {});
-
-    return d;
-  }
-
-  function publish(role, user = null, error = null) {
-    state = { role, user, error };
-
-    listeners.forEach(listener => {
-      try {
-        listener({ ...state });
-      } catch (err) {
-        console.error("[Velmoric Auth] listener error:", err);
-      }
-    });
-  }
-
-  // =======================================================
-  // VERIFIKASI ADMIN
-  // =======================================================
-
-  async function isVerifiedAdmin(user) {
-    if (!user || user.isAnonymous) return false;
+async function handleUser(user) {
+  // Tidak ada sesi -> masuk sebagai pembaca anonim.
+  if (!user) {
+    publish(ROLE.NONE);
 
     try {
-      const { doc, getDoc } = funcs();
-
-      const snapshot = await getDoc(
-        doc(window.firebaseDB, "admins", user.uid)
-      );
-
-      return snapshot.exists() && snapshot.data().role === "admin";
-
+      await signInAnonymously(auth);
     } catch (error) {
-      console.error("[Velmoric Auth] Pemeriksaan admin gagal:", error);
-      return false;
+      console.error("[Velmoric Auth] Login anonim gagal:", error);
+      publish(ROLE.NONE, null, error.code || "auth/anonymous-failed");
     }
+
+    return;
   }
 
-  // =======================================================
-  // PENANGAN PERUBAHAN SESI
-  // =======================================================
-
-  async function handleUser(user) {
-    // --- Tidak ada sesi -> masuk sebagai pembaca anonim ---
-    if (!user) {
-      publish(ROLE.NONE);
-
-      try {
-        await funcs().signInAnonymously(auth());
-      } catch (error) {
-        console.error("[Velmoric Auth] Login anonim gagal:", error);
-        publish(ROLE.NONE, null, error.code || "auth/anonymous-failed");
-      }
-
-      return;
-    }
-
-    // --- Sesi anonim -> pembaca ---
-    if (user.isAnonymous) {
-      publish(ROLE.READER, user);
-      return;
-    }
-
-    // --- Sesi email -> harus admin terverifikasi ---
-    const verified = await isVerifiedAdmin(user);
-
-    // Sesi bisa berubah selama menunggu (mis. logout). Abaikan hasil basi.
-    if (auth().currentUser?.uid !== user.uid) return;
-
-    if (verified) {
-      publish(ROLE.ADMIN, user);
-
-      if (pendingLogin) pendingLogin.resolve();
-
-      return;
-    }
-
-    console.warn("[Velmoric Auth] Akun bukan admin, sesi dihentikan.");
-
-    if (pendingLogin) {
-      pendingLogin.reject(
-        codeError("not-admin", "Akun ini tidak memiliki hak administrator.")
-      );
-    }
-
-    // Keluar -> listener menerima null -> kembali ke pembaca anonim.
-    try {
-      await funcs().signOut(auth());
-    } catch (error) {
-      console.error("[Velmoric Auth] signOut gagal:", error);
-    }
+  if (user.isAnonymous) {
+    publish(ROLE.READER, user);
+    return;
   }
 
-  // =======================================================
-  // API PUBLIK
-  // =======================================================
+  // Sesi email -> harus admin terverifikasi.
+  const verified = await isVerifiedAdmin(user);
 
-  function start() {
-    if (started) return;
+  // Sesi bisa berubah selama menunggu (mis. logout). Abaikan hasil basi.
+  if (auth.currentUser?.uid !== user.uid) return;
 
-    started = true;
-
-    funcs().onAuthStateChanged(auth(), user => {
-      handleUser(user).catch(error => {
-        console.error("[Velmoric Auth] Kesalahan tak terduga:", error);
-      });
-    });
+  if (verified) {
+    publish(ROLE.ADMIN, user);
+    pendingLogin?.resolve();
+    return;
   }
 
-  function onChange(listener) {
-    listeners.add(listener);
+  console.warn("[Velmoric Auth] Akun bukan admin, sesi dihentikan.");
 
-    // Kirim status terkini agar pemanggil yang telat tetap sinkron.
-    if (started) listener({ ...state });
+  pendingLogin?.reject(
+    codeError("not-admin", "Akun ini tidak memiliki hak administrator.")
+  );
 
-    return () => listeners.delete(listener);
+  // Keluar -> listener menerima null -> kembali ke pembaca anonim.
+  try {
+    await signOut(auth);
+  } catch (error) {
+    console.error("[Velmoric Auth] signOut gagal:", error);
   }
+}
 
-  /**
-   * Login admin (email + password). Resolve jika terverifikasi admin.
-   * Reject dengan error ber-`code`:
-   *   - "not-admin"                -> akun valid tapi bukan admin
-   *   - "auth/invalid-credential"  -> email/password salah, dst.
-   */
-  async function loginAdmin(email, password) {
-    if (!started) {
-      throw codeError("auth/not-ready", "Firebase belum siap.");
-    }
+export function start() {
+  if (started) return;
 
-    const attempt = deferred();
-    pendingLogin = attempt;
+  started = true;
 
-    const timer = setTimeout(() => {
-      attempt.reject(codeError("auth/timeout", "Waktu login habis."));
-    }, LOGIN_TIMEOUT_MS);
-
-    try {
-      await funcs().signInWithEmailAndPassword(auth(), email, password);
-      await attempt.promise;
-
-    } finally {
-      clearTimeout(timer);
-
-      if (pendingLogin === attempt) pendingLogin = null;
-    }
-  }
-
-  /** Logout admin. Otomatis kembali ke pembaca anonim. */
-  async function logoutAdmin() {
-    await funcs().signOut(auth());
-  }
-
-  function getState() {
-    return { ...state };
-  }
-
-  window.Auth = Object.freeze({
-    ROLE,
-    start,
-    onChange,
-    loginAdmin,
-    logoutAdmin,
-    getState
+  onAuthStateChanged(auth, user => {
+    handleUser(user).catch(error =>
+      console.error("[Velmoric Auth] Kesalahan tak terduga:", error)
+    );
   });
+}
 
-  console.log("[Velmoric Auth] Modul auth dimuat.");
+/** Daftarkan listener; langsung dipanggil dengan status terkini. */
+export function onChange(listener) {
+  listeners.add(listener);
+  listener(state);
 
-})();
+  return () => listeners.delete(listener);
+}
+
+export function getState() {
+  return state;
+}
+
+/**
+ * Login admin. Resolve jika terverifikasi admin.
+ * Reject dengan error ber-`code`, misalnya:
+ *   "not-admin", "auth/invalid-credential", "auth/timeout".
+ */
+export async function loginAdmin(email, password) {
+  if (!started) throw codeError("auth/not-ready", "Firebase belum siap.");
+
+  let timer;
+
+  const attempt = {};
+  attempt.promise = new Promise((resolve, reject) => {
+    attempt.resolve = resolve;
+    attempt.reject = reject;
+  });
+  attempt.promise.catch(() => {}); // cegah "unhandled rejection"
+
+  pendingLogin = attempt;
+
+  try {
+    timer = setTimeout(
+      () => attempt.reject(codeError("auth/timeout", "Waktu login habis.")),
+      LOGIN_TIMEOUT_MS
+    );
+
+    await signInWithEmailAndPassword(auth, email, password);
+    await attempt.promise;
+  } finally {
+    clearTimeout(timer);
+    if (pendingLogin === attempt) pendingLogin = null;
+  }
+}
+
+/** Logout admin; otomatis kembali menjadi pembaca anonim. */
+export function logoutAdmin() {
+  return signOut(auth);
+}
