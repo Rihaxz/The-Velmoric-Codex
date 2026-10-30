@@ -1,162 +1,188 @@
 
-/* ==========================================
+/* =========================================================
    THE VELMORIC CODEX
-   DATA & UTILITIES
-========================================== */
+   data.js
+   Data utama dan helper website
+========================================================= */
 
-const STORAGE_KEY = "wikikarakter_v1";
+(() => {
+  "use strict";
 
-/* ==========================================
-   MEMBUAT ID LOKAL
-========================================== */
+  // =======================================================
+  // DATA KARAKTER
+  // =======================================================
 
-function uid() {
-  return (
-    "c" +
-    Date.now().toString(36) +
-    Math.random().toString(36).slice(2, 9)
-  );
-}
+  window.characters = [];
 
-/* ==========================================
-   HTML ESCAPE
-========================================== */
+  // Struktur data karakter:
+  //
+  // {
+  //   id: "ID_FIRESTORE",
+  //   nama: "Nama Karakter",
+  //   gelar: "Gelar karakter",
+  //   kategori: "Protagonist",
+  //   ras: "Human",
+  //   umur: "Unknown",
+  //   jenisKelamin: "Unknown",
+  //   foto: "https://example.com/image.jpg",
+  //   deskripsi: "Deskripsi karakter",
+  //   kemampuan: "Kemampuan karakter",
+  //   kepribadian: "Kepribadian karakter",
+  //   cerita: "Latar belakang karakter",
+  //   status: "Alive",
+  //   dibuatPada: "2026-01-01T00:00:00.000Z",
+  //   diperbaruiPada: "2026-01-01T00:00:00.000Z"
+  // }
 
-function esc(value) {
-  return String(value ?? "").replace(
-    /[&<>"']/g,
-    character => ({
-      "&": "&amp;",
-      "<": "&lt;",
-      ">": "&gt;",
-      '"': "&quot;",
-      "'": "&#39;"
-    })[character]
-  );
-}
+  // =======================================================
+  // KATEGORI KARAKTER
+  // =======================================================
 
-/* ==========================================
-   STRUKTUR DATA KARAKTER
-========================================== */
-
-function buatDataKarakter(data = {}) {
-  return {
-    nama: data.nama || "",
-    kategori: data.kategori || "Karakter",
-
-    avatar: data.avatar || "",
-    foto: data.foto || "",
-
-    gelar: data.gelar || "",
-    ras: data.ras || "",
-    gender: data.gender || "",
-
-    usia: data.usia || "",
-    tinggi: data.tinggi || "",
-    berat: data.berat || "",
-
-    asal: data.asal || "",
-    afiliasi: data.afiliasi || "",
-    status: data.status || "",
-    kelas: data.kelas || "",
-
-    deskripsi: data.deskripsi || "",
-    kepribadian: data.kepribadian || "",
-    latar: data.latar || "",
-    kemampuan: data.kemampuan || "",
-    kelemahan: data.kelemahan || ""
-  };
-}
-
-/* ==========================================
-   DATA CONTOH
-   HANYA UNTUK REFERENSI
-========================================== */
-
-function defaultData() {
-  return [
-    buatDataKarakter({
-      nama: "Arka Wijaya",
-      kategori: "Karakter",
-      gelar: "Sang Penjaga Naga",
-      ras: "Manusia-Penjelma Naga",
-      gender: "Laki-laki",
-      usia: "27 tahun",
-      tinggi: "182 cm",
-      berat: "74 kg",
-      asal: "Kerajaan Arunika",
-      afiliasi: "Ordo Cakrawala",
-      status: "Aktif",
-      kelas: "Api · Ksatria",
-      foto: "https://images.unsplash.com/photo-1518709268805-4e9042af9f23?auto=format&fit=crop&w=900&q=85",
-      deskripsi:
-        "Ksatria yang mengikat perjanjian darah dengan naga langit.",
-      kepribadian:
-        "Tenang, setia, dan protektif terhadap rekan-rekannya.",
-      latar:
-        "Dibesarkan seekor naga tua setelah desanya dihancurkan badai abadi.",
-      kemampuan:
-        "Memanggil api naga dan bertarung dengan pedang bersisik naga.",
-      kelemahan:
-        "Kehilangan kendali saat emosinya memuncak."
-    }),
-
-    buatDataKarakter({
-      nama: "Seraphine Moonshade",
-      kategori: "Karakter",
-      gelar: "Penyihir Bulan Perak",
-      ras: "Half-Elf",
-      gender: "Perempuan",
-      usia: "143 tahun",
-      tinggi: "168 cm",
-      berat: "51 kg",
-      asal: "Menara Selene",
-      afiliasi: "Dewan Sihir Selene",
-      status: "Aktif",
-      kelas: "Bulan · Penyihir",
-      foto: "https://images.unsplash.com/photo-1511497584788-876760111969?auto=format&fit=crop&w=900&q=85",
-      deskripsi:
-        "Arsiparis sihir yang ahli dalam ramalan.",
-      kepribadian:
-        "Cuek dan sarkastik, tetapi diam-diam peduli.",
-      latar:
-        "Menghabiskan puluhan tahun mempelajari sihir bulan.",
-      kemampuan:
-        "Ilusi, ramalan jangka pendek, dan manipulasi cahaya bulan.",
-      kelemahan:
-        "Sihir melemah saat gerhana bulan."
-    })
+  window.characterCategories = [
+    "Protagonist",
+    "Antagonist",
+    "Supporting",
+    "God",
+    "Demon",
+    "Angel",
+    "Human",
+    "Other"
   ];
-}
 
-/* ==========================================
-   VALIDASI DATA
-========================================== */
+  // =======================================================
+  // PENGATURAN GLOBAL
+  // =======================================================
 
-function validasiDataKarakter(data) {
-  if (!data || typeof data !== "object") {
-    return false;
-  }
+  window.globalSettings = {
+    theme: "dark",
+    musicUrls: [],
+    musicUrl: ""
+  };
 
-  if (
-    typeof data.nama !== "string" ||
-    !data.nama.trim()
-  ) {
-    return false;
-  }
+  // =======================================================
+  // PLAYLIST MUSIK
+  // =======================================================
 
-  return true;
-}
+  window.musicPlaylist = [];
 
-/* ==========================================
-   NORMALISASI DATA
-========================================== */
+  // =======================================================
+  // HELPER: ESCAPE HTML
+  // Mencegah teks karakter dianggap sebagai HTML.
+  // =======================================================
 
-function normalisasiDataKarakter(data) {
-  const hasil = buatDataKarakter(data);
+  window.esc = function (value) {
+    if (value === null || value === undefined) {
+      return "";
+    }
 
-  hasil.nama = hasil.nama.trim();
-  hasil.kategori = hasil.kategori.trim() || "Karakter";
+    return String(value)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#039;");
+  };
 
-  return hasil;
-}
+  // =======================================================
+  // HELPER: FORMAT TANGGAL
+  // =======================================================
+
+  window.formatDate = function (date) {
+    if (!date) return "Unknown";
+
+    const parsedDate = new Date(date);
+
+    if (Number.isNaN(parsedDate.getTime())) {
+      return "Unknown";
+    }
+
+    return parsedDate.toLocaleDateString("id-ID", {
+      day: "2-digit",
+      month: "long",
+      year: "numeric"
+    });
+  };
+
+  // =======================================================
+  // HELPER: DATA KARAKTER BERDASARKAN ID
+  // =======================================================
+
+  window.getCharacterById = function (id) {
+    return window.characters.find(
+      character => character.id === id
+    ) || null;
+  };
+
+  // =======================================================
+  // HELPER: PENCARIAN KARAKTER
+  // =======================================================
+
+  window.searchCharacters = function (keyword) {
+    const query = String(keyword || "")
+      .trim()
+      .toLowerCase();
+
+    if (!query) {
+      return [...window.characters];
+    }
+
+    return window.characters.filter(character => {
+      const searchable = [
+        character.nama,
+        character.gelar,
+        character.kategori,
+        character.ras,
+        character.deskripsi
+      ];
+
+      return searchable.some(value =>
+        String(value || "")
+          .toLowerCase()
+          .includes(query)
+      );
+    });
+  };
+
+  // =======================================================
+  // HELPER: FILTER KATEGORI
+  // =======================================================
+
+  window.filterCharactersByCategory = function (category) {
+    if (!category || category === "All") {
+      return [...window.characters];
+    }
+
+    return window.characters.filter(character =>
+      String(character.kategori || "").toLowerCase() ===
+      String(category).toLowerCase()
+    );
+  };
+
+  // =======================================================
+  // HELPER: VALIDASI DATA KARAKTER
+  // =======================================================
+
+  window.validateCharacter = function (character) {
+    if (!character || typeof character !== "object") {
+      return {
+        valid: false,
+        message: "Data karakter tidak valid."
+      };
+    }
+
+    if (!String(character.nama || "").trim()) {
+      return {
+        valid: false,
+        message: "Nama karakter wajib diisi."
+      };
+    }
+
+    return {
+      valid: true,
+      message: "Data karakter valid."
+    };
+  };
+
+  console.log("[Velmoric Data] Data utama berhasil dimuat.");
+
+})();
