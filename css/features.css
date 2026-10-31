@@ -1,0 +1,503 @@
+/* =========================================================
+   THE VELMORIC CODEX — features.css
+   Gaya fitur baru: ikon SVG, sidebar beranimasi, kerangka
+   pemuatan, komentar & balasan, panel moderator & owner,
+   dan profil. Dimuat setelah style.css.
+   Tema terang sudah dihapus; hanya tema gelap.
+========================================================= */
+
+/* Atribut hidden harus selalu menyembunyikan elemen. */
+[hidden] {
+    display: none !important;
+}
+
+/* ---------- IKON SVG ---------- */
+
+.ico {
+    width: 1.15em;
+    height: 1.15em;
+    flex: none;
+    vertical-align: -0.2em;
+    display: inline-block;
+}
+
+.ico-sm {
+    width: 0.95em;
+    height: 0.95em;
+    vertical-align: -0.15em;
+}
+
+.ico-xs {
+    width: 0.8em;
+    height: 0.8em;
+    vertical-align: -0.1em;
+}
+
+.btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    transition: background-color .2s ease, border-color .2s ease, color .2s ease, transform .15s ease;
+}
+
+.btn:active:not(:disabled) {
+    transform: translateY(1px);
+}
+
+.btn:disabled {
+    opacity: .55;
+    cursor: not-allowed;
+}
+
+.icon-btn {
+    padding: 8px 10px;
+    line-height: 0;
+}
+
+.nav-ico {
+    display: inline-flex;
+    width: 20px;
+    margin-right: 10px;
+    color: var(--gold);
+}
+
+.side-link {
+    display: flex;
+    align-items: center;
+}
+
+.role-label {
+    color: var(--gold);
+    font-size: 12px;
+    letter-spacing: 1px;
+    white-space: nowrap;
+    max-width: 220px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* ---------- SIDEBAR (animasi buka/tutup) ---------- */
+
+.sidebar {
+    transition:
+        width .35s cubic-bezier(.2, .8, .2, 1),
+        padding .35s cubic-bezier(.2, .8, .2, 1),
+        border-color .35s ease;
+    overflow-x: hidden;
+    overflow-y: auto;
+}
+
+.sidebar > * {
+    transition: opacity .25s ease .05s;
+}
+
+.sidebar-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding-right: 4px;
+}
+
+.sidebar-head .side-heading {
+    margin-top: 12px;
+}
+
+.sidebar-toggle {
+    margin-top: 12px;
+    padding: 6px 8px;
+}
+
+.side-info {
+    padding: 10px;
+    color: var(--muted);
+    font-size: 11px;
+    line-height: 1.8;
+}
+
+.side-staff {
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px solid var(--border);
+}
+
+.sidebar-backdrop {
+    display: none;
+}
+
+/* Lipat sidebar (desktop): lebar mengecil dengan animasi halus. */
+body.sidebar-collapsed .sidebar {
+    width: 0;
+    padding-left: 0;
+    padding-right: 0;
+    border-right-color: transparent;
+}
+
+body.sidebar-collapsed .sidebar > * {
+    opacity: 0;
+    pointer-events: none;
+}
+
+@media (max-width: 850px) {
+    .sidebar {
+        transition: transform .38s cubic-bezier(.2, .8, .2, 1), box-shadow .38s ease;
+        box-shadow: none;
+    }
+
+    .sidebar.open {
+        box-shadow: 0 20px 60px rgba(0, 0, 0, .6);
+    }
+
+    .sidebar.open > * {
+        opacity: 1;
+    }
+
+    .sidebar-backdrop {
+        display: block;
+        position: fixed;
+        inset: 70px 0 0 0;
+        z-index: 25;
+        background: rgba(5, 5, 10, .55);
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity .3s ease;
+    }
+
+    .sidebar-backdrop.show {
+        opacity: 1;
+        pointer-events: auto;
+    }
+
+    /* Di ponsel, tombol lipat tidak diperlukan. */
+    .sidebar-toggle {
+        display: none;
+    }
+}
+
+/* ---------- ANIMASI MEMUAT ---------- */
+
+@keyframes viewIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to   { opacity: 1; transform: none; }
+}
+
+@keyframes cardIn {
+    from { opacity: 0; transform: translateY(14px) scale(.98); }
+    to   { opacity: 1; transform: none; }
+}
+
+@keyframes shimmer {
+    0%   { background-position: -400px 0; }
+    100% { background-position: 400px 0; }
+}
+
+.view-enter {
+    animation: viewIn .45s cubic-bezier(.2, .8, .2, 1) both;
+}
+
+.view-enter .card {
+    animation: cardIn .5s cubic-bezier(.2, .8, .2, 1) both;
+    animation-delay: calc(var(--i, 0) * 45ms);
+}
+
+/* Kartu di luar layar tidak perlu dihitung ulang tataletaknya. */
+.card-grid .card {
+    content-visibility: auto;
+    contain-intrinsic-size: 260px;
+}
+
+.skeleton {
+    max-width: 900px;
+    margin: 30px auto;
+}
+
+.sk-line,
+.sk-block {
+    border-radius: 6px;
+    background: linear-gradient(90deg, var(--panel) 0%, var(--panel2) 50%, var(--panel) 100%);
+    background-size: 800px 100%;
+    animation: shimmer 1.4s linear infinite;
+    margin-bottom: 14px;
+}
+
+.sk-line { height: 14px; width: 100%; }
+.sk-title { height: 34px; width: 55%; margin-bottom: 18px; }
+.sk-sub { height: 16px; width: 35%; margin-bottom: 26px; }
+.sk-short { width: 60%; }
+.sk-block { height: 180px; }
+
+/* ---------- KOMENTAR ---------- */
+
+.comments {
+    margin-top: 28px;
+}
+
+.comment-form,
+.reply-form {
+    display: grid;
+    gap: 10px;
+    margin: 14px 0 22px;
+}
+
+.comment-form textarea,
+.reply-form textarea {
+    width: 100%;
+    min-height: 80px;
+    resize: vertical;
+}
+
+.reply-actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.comment-list {
+    list-style: none;
+    display: grid;
+    gap: 14px;
+}
+
+.comment-list.nested {
+    margin: 10px 0 0 22px;
+    padding-left: 16px;
+    border-left: 2px solid var(--border);
+}
+
+.comment {
+    padding: 14px 16px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    animation: viewIn .35s ease both;
+}
+
+.comment.reply {
+    background: var(--panel2);
+}
+
+.comment-head {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    font-size: 13px;
+}
+
+.comment-head time {
+    color: var(--muted);
+    font-size: 12px;
+    margin-left: auto;
+}
+
+.comment-body {
+    margin: 8px 0;
+    line-height: 1.65;
+    overflow-wrap: anywhere;
+}
+
+.comment-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.comments-status {
+    padding: 12px 0;
+}
+
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+}
+
+.role-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-size: 11px;
+    letter-spacing: .5px;
+    border: 1px solid var(--gold);
+    color: var(--gold);
+}
+
+.role-owner {
+    background: rgba(200, 167, 106, .15);
+}
+
+.role-moderator {
+    color: var(--text);
+    border-color: var(--muted);
+}
+
+.badge.on { color: #8fc79a; border-color: #8fc79a; }
+.badge.off { color: var(--danger); border-color: var(--danger); }
+
+/* ---------- PANEL MODERATOR & OWNER ---------- */
+
+.panel-actions {
+    margin: 18px 0 6px;
+}
+
+.panel-stack {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+    gap: 18px;
+    margin: 18px 0;
+}
+
+.panel-stack .panel.wide {
+    grid-column: 1 / -1;
+}
+
+.queue {
+    list-style: none;
+    display: grid;
+    gap: 12px;
+}
+
+.queue-item {
+    display: flex;
+    justify-content: space-between;
+    gap: 14px;
+    padding: 12px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--panel2);
+}
+
+.queue-main {
+    min-width: 0;
+    flex: 1;
+}
+
+.queue-main p {
+    margin-top: 4px;
+    overflow-wrap: anywhere;
+}
+
+.queue-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    align-items: flex-end;
+}
+
+.queue-detail summary {
+    cursor: pointer;
+    color: var(--gold);
+    font-size: 13px;
+    margin-top: 6px;
+}
+
+.queue-detail .prose {
+    margin-top: 8px;
+    font-size: 15px;
+}
+
+.table-wrap {
+    overflow-x: auto;
+}
+
+.staff-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+}
+
+.staff-table th,
+.staff-table td {
+    text-align: left;
+    padding: 10px 8px;
+    border-bottom: 1px solid var(--border);
+    vertical-align: middle;
+}
+
+.staff-actions {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+.sub-heading {
+    margin: 22px 0 8px;
+    font-family: Cinzel, serif;
+    color: var(--gold);
+    font-size: 15px;
+    letter-spacing: 1px;
+}
+
+.stack-form {
+    display: grid;
+    gap: 12px;
+}
+
+.stack-form label {
+    display: grid;
+    gap: 6px;
+    font-size: 13px;
+    color: var(--muted);
+}
+
+.stack-form input,
+.stack-form textarea {
+    width: 100%;
+}
+
+.form-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 12px;
+}
+
+.form-actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.profile-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.profile-table th,
+.profile-table td {
+    text-align: left;
+    padding: 8px 6px;
+    border-bottom: 1px solid var(--border);
+}
+
+.profile-table th {
+    width: 120px;
+    color: var(--muted);
+    font-weight: 500;
+}
+
+/* ---------- PEMUTAR MUSIK ---------- */
+
+.player-stop {
+    color: var(--danger);
+}
+
+/* ---------- GERAK DIKURANGI (aksesibilitas) ---------- */
+
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: .001ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: .001ms !important;
+        scroll-behavior: auto !important;
+    }
+}
