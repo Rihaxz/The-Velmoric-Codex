@@ -2,13 +2,15 @@
    views/article.js — halaman artikel entri.
 ========================================================= */
 
-import { INFO_FIELDS, SECTIONS, THREAT_LEVELS, parseYear } from "../schema.js";
+import { INFO_FIELDS, SECTIONS, parseYear } from "../schema.js";
 import { renderMarkup } from "../markup.js";
 import { imageTag } from "../media.js";
 import { esc } from "../utils.js";
+import { svg } from "../icons.js";
 import {
   avatarHTML, draftBadge, entryHref, formatYear, icon, miniCard, ornament, threatBadge
 } from "./common.js";
+import { commentsHTML } from "./comments.js";
 
 function infoValue(field, entry) {
   if (field.type === "threat") return threatBadge(entry[field.key]);
@@ -84,8 +86,21 @@ function galleryHTML(entry) {
     </section>`;
 }
 
+/** Kerangka saat entri belum tersedia (memuat data). */
+export function skeletonHTML() {
+  return `
+    <div class="skeleton" aria-hidden="true">
+      <div class="sk-line sk-title"></div>
+      <div class="sk-line sk-sub"></div>
+      <div class="sk-block"></div>
+      <div class="sk-line"></div>
+      <div class="sk-line"></div>
+      <div class="sk-line sk-short"></div>
+    </div>`;
+}
+
 export function articleHTML(entry, ctx) {
-  const { isAdmin, bookmarked, reading, resolve, relations, tree, backlinks } = ctx;
+  const { isAdmin, isOwner = false, bookmarked, reading, resolve, relations, tree, backlinks, comments = {} } = ctx;
 
   const info = INFO_FIELDS.filter(field => entry[field.key]);
   const sections = SECTIONS.filter(field => entry[field.key]);
@@ -94,7 +109,8 @@ export function articleHTML(entry, ctx) {
     ...sections.map(field => [field.key, field.label]),
     ...(tree ? [["silsilah", "Silsilah"]] : []),
     ...(relations.length ? [["hubungan", "Hubungan"]] : []),
-    ...(entry.galeri?.length ? [["galeri", "Galeri"]] : [])
+    ...(entry.galeri?.length ? [["galeri", "Galeri"]] : []),
+    ["komentar", "Komentar"]
   ];
 
   return `
@@ -110,10 +126,14 @@ export function articleHTML(entry, ctx) {
         <p class="muted">${esc([entry.julukan && `“${entry.julukan}”`, entry.gelar].filter(Boolean).join(" · ") || entry.kategori || "Arsip Codex")}</p>
       </div>
       <div class="article-tools">
-        <button class="btn${bookmarked ? " active" : ""}" data-action="bookmark" aria-pressed="${bookmarked}">${bookmarked ? "★ Ditandai" : "☆ Tandai"}</button>
-        <button class="btn" data-action="share">Bagikan</button>
-        <button class="btn${reading ? " active" : ""}" data-action="reading" aria-pressed="${reading}">${reading ? "Keluar Mode Baca" : "Mode Baca"}</button>
-        ${entry.peta ? `<a class="btn" href="#/peta?fokus=${encodeURIComponent(entry.id)}">⌖ Lihat di Peta</a>` : ""}
+        <button class="btn${bookmarked ? " active" : ""}" data-action="bookmark" aria-pressed="${bookmarked}">
+          ${svg("bookmark", "ico-sm")}<span>${bookmarked ? "Ditandai" : "Tandai"}</span>
+        </button>
+        <button class="btn" data-action="share">${svg("share", "ico-sm")}<span>Bagikan</span></button>
+        <button class="btn${reading ? " active" : ""}" data-action="reading" aria-pressed="${reading}">
+          ${svg("book", "ico-sm")}<span>${reading ? "Keluar Mode Baca" : "Mode Baca"}</span>
+        </button>
+        ${entry.peta ? `<a class="btn" href="#/peta?fokus=${encodeURIComponent(entry.id)}">${svg("pin", "ico-sm")}<span>Lihat di Peta</span></a>` : ""}
       </div>
     </header>
 
@@ -144,6 +164,9 @@ export function articleHTML(entry, ctx) {
             <h3>Disebut dalam</h3>
             <div class="mini-grid">${backlinks.map(other => miniCard(other)).join("")}</div>
           </section>` : ""}
+
+        ${ornament()}
+        ${commentsHTML({ entryId: entry.id, ...comments })}
       </article>
 
       <aside class="infobox">
@@ -155,9 +178,10 @@ export function articleHTML(entry, ctx) {
         </table>
         ${isAdmin ? `
           <div class="infobox-actions">
-            <button class="btn" data-edit="${esc(entry.id)}">Edit</button>
-            <button class="btn" data-action="history" data-id="${esc(entry.id)}">Riwayat</button>
-            <button class="btn danger" data-del="${esc(entry.id)}">Hapus</button>
+            <button class="btn" data-edit="${esc(entry.id)}">${svg("edit", "ico-sm")}<span>Edit</span></button>
+            ${isOwner ? `
+              <button class="btn" data-action="history" data-id="${esc(entry.id)}">${svg("clock", "ico-sm")}<span>Riwayat</span></button>
+              <button class="btn danger" data-del="${esc(entry.id)}">${svg("trash", "ico-sm")}<span>Hapus</span></button>` : ""}
           </div>` : ""}
       </aside>
     </div>`;
@@ -165,11 +189,9 @@ export function articleHTML(entry, ctx) {
 
 export function notFoundHTML(loading) {
   return loading
-    ? `<p class="empty">Membuka gulungan arsip…</p>`
+    ? skeletonHTML()
     : `
-      <a class="btn" href="#/">← Kembali</a>
+      <a class="btn" href="#/">${svg("chevronLeft", "ico-sm")}<span>Kembali</span></a>
       <h1 class="page-title">Entri tidak ditemukan</h1>
       <p class="muted">Catatan ini mungkin sudah dihapus, atau tautannya salah.</p>`;
 }
-
-export { THREAT_LEVELS };
