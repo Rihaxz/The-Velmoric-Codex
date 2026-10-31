@@ -8,6 +8,9 @@
      revisi/{id}     salinan versi lama sebelum diubah/dihapus
      log/{id}        catatan aktivitas admin
      media/{id}      gambar upload (sudah dikompres, base64)
+     usulan/{id}    entri kiriman anonim (menunggu persetujuan)
+     komentar/{id}  komentar & balasan (lihat community.js)
+     admins/{uid}   akun staf (lihat auth.js & accounts.js)
      pengaturan/global
 
    Semua fungsi async melempar error; pemanggil yang
@@ -198,7 +201,7 @@ function who() {
 }
 
 /** Catat aktivitas. Kegagalan log tidak menggagalkan aksi utama. */
-async function logActivity(aksi, entry) {
+export async function logActivity(aksi, entry) {
   try {
     await addDoc(collection(db, C.log), {
       aksi,
@@ -465,7 +468,6 @@ export function normalizeSettings(source = {}) {
   )].slice(0, 30);
 
   return {
-    theme: input.theme === "light" ? "light" : "dark",
     musicUrls,
     musicUrl: musicUrls[0] || "", // kompatibilitas data lama
     kategoriTambahan: extraCategories,
