@@ -20,6 +20,7 @@ export function mapView() {
     // Lokasi & kerajaan didahulukan, tapi entri apa pun boleh ditempatkan.
     placeable: [...entries].sort((a, b) => rank(a) - rank(b)),
     isAdmin: state.isAdmin,
+    isOwner: state.isOwner,
     editing: state.isAdmin && state.map.editing,
     selectedId: state.map.selectedId,
     focusId: state.route.params.get("fokus") || "",
@@ -72,6 +73,7 @@ async function removeMarker(id) {
 }
 
 async function replaceMapImage(input) {
+  if (!state.isOwner) return setStatus("Hanya owner yang bisa mengganti gambar peta.", true);
   const file = input.files[0];
   input.value = "";
   if (!file) return;
