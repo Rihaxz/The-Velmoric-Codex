@@ -23,16 +23,6 @@ body {
     min-height: 100vh;
 }
 
-body.light-mode {
-    --bg: #eeeae2;
-    --panel: #fffdf8;
-    --panel2: #e7e1d6;
-    --text: #29251f;
-    --muted: #777064;
-    --gold: #94713b;
-    --border: rgba(100,75,35,.2);
-}
-
 button, input, textarea, select {
     font: inherit;
 }
@@ -861,21 +851,6 @@ body {
         radial-gradient(ellipse at 100% 100%, rgba(120,90,160,.06), transparent 50%),
         var(--bg);
     background-attachment: fixed;
-}
-
-/* Mode terang bernuansa perkamen */
-body.light-mode {
-    --bg: #ece3cf;
-    --panel: #f8f1e1;
-    --panel2: #e9dec5;
-    --text: #2e271c;
-    --muted: #6f6450;
-    --gold: #8a6428;
-    --border: rgba(110,80,30,.25);
-    background:
-        radial-gradient(ellipse at 50% 0%, rgba(255,250,235,.8), transparent 60%),
-        radial-gradient(ellipse at 0% 100%, rgba(160,120,60,.12), transparent 50%),
-        var(--bg);
 }
 
 .side-nav {
