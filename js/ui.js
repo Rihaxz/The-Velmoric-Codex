@@ -1,7 +1,12 @@
 /* =========================================================
    THE VELMORIC CODEX — ui.js
    State aplikasi + utilitas UI bersama (toast, modal, navigasi).
-   Dipakai oleh app.js, editor.js, admin.js, dan map.js.
+   Dipakai oleh app.js, editor.js, panel, dan map.js.
+
+   Flag turunan (dihitung dari peran):
+     isAdmin  : staf (moderator ATAU owner) — nama lama, dipertahankan
+                agar view yang sudah ada tetap jalan.
+     isOwner  : hanya owner.
 ========================================================= */
 
 import { getCachedSettings } from "./storage.js";
@@ -13,14 +18,27 @@ export const state = {
   query: "",
   category: "",
   limit: 24,
+  role: "none",
   isAdmin: false,
+  isOwner: false,
+  profile: null,
   loading: true,
-  lastRole: null,
   settings: getCachedSettings(),
   prefs: getPrefs(),
   activity: null,
+  moderation: { submissions: null, comments: null },
+  staff: null,
+  comments: { entryId: null, list: null },
   map: { editing: false, selectedId: "" }
 };
+
+/** Atur peran dan flag turunannya sekaligus. */
+export function setRole(role, profile = null) {
+  state.role = role;
+  state.isOwner = role === "owner";
+  state.isAdmin = role === "owner" || role === "moderator";
+  state.profile = profile;
+}
 
 // =========================================================
 // RENDER (didaftarkan oleh app.js agar tidak saling impor)
@@ -75,12 +93,14 @@ export function setStatus(message, isError = false) {
 export function friendlyError(error, fallback) {
   switch (error?.code) {
     case "permission-denied":
-      return "Akses ditolak oleh Firestore. Pastikan akunmu admin dan firestore.rules terbaru sudah dipublikasikan.";
+      return "Akses ditolak. Pastikan perananmu sesuai dan firestore.rules terbaru sudah dipublikasikan.";
     case "unavailable":
     case "auth/network-request-failed":
       return "Tidak dapat terhubung ke server. Periksa koneksi internet.";
     case "failed-precondition":
       return `${fallback} (Firestore butuh index; buka link di console browser untuk membuatnya.)`;
+    case "cooldown":
+      return error.message;
     default:
       return error?.message ? `${fallback} (${error.message})` : fallback;
   }
