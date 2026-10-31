@@ -4,6 +4,7 @@
 
 import { THREAT_LEVELS } from "../schema.js";
 import { esc } from "../utils.js";
+import { svg } from "../icons.js";
 import {
   avatarHTML, cardGridHTML, chipsHTML, entryHref, icon, miniCard, ornament, snippet
 } from "./common.js";
@@ -25,19 +26,19 @@ function loreHTML(lore) {
 
 function portalsHTML(counts) {
   const portals = [
-    { href: "#/bestiari", glyph: "☠", title: "Bestiari", text: "Makhluk & monster", count: counts.get("Makhluk") || 0 },
-    { href: "#/peta", glyph: "⌖", title: "Peta Dunia", text: "Kerajaan, kota, dungeon", count: (counts.get("Lokasi") || 0) + (counts.get("Kerajaan") || 0) },
-    { href: "#/linimasa", glyph: "⌛", title: "Linimasa", text: "Sejarah per era", count: counts.get("Peristiwa") || 0 },
-    { href: "#/jelajah?k=Sihir", glyph: "✦", title: "Sihir & Kemampuan", text: "Sistem sihir & skill", count: counts.get("Sihir") || 0 },
-    { href: "#/jelajah?k=Artefak", glyph: "⚔", title: "Artefak", text: "Senjata & relik legendaris", count: counts.get("Artefak") || 0 },
-    { href: "#/acak", glyph: "✧", title: "Penemuan Acak", text: "Buka halaman tak terduga", count: "" }
+    { href: "#/bestiari", icon: "paw", title: "Bestiari", text: "Makhluk & monster", count: counts.get("Makhluk") || 0 },
+    { href: "#/peta", icon: "pin", title: "Peta Dunia", text: "Kerajaan, kota, dungeon", count: (counts.get("Lokasi") || 0) + (counts.get("Kerajaan") || 0) },
+    { href: "#/linimasa", icon: "clock", title: "Linimasa", text: "Sejarah per era", count: counts.get("Peristiwa") || 0 },
+    { href: "#/jelajah?k=Sihir", icon: "sparkle", title: "Sihir & Kemampuan", text: "Sistem sihir & skill", count: counts.get("Sihir") || 0 },
+    { href: "#/jelajah?k=Artefak", icon: "gem", title: "Artefak", text: "Senjata & relik legendaris", count: counts.get("Artefak") || 0 },
+    { href: "#/acak", icon: "shuffle", title: "Penemuan Acak", text: "Buka halaman tak terduga", count: "" }
   ];
 
   return `
     <section class="portals" aria-label="Jelajahi arsip">
       ${portals.map(portal => `
         <a class="portal" href="${portal.href}">
-          <span class="portal-glyph" aria-hidden="true">${portal.glyph}</span>
+          <span class="portal-glyph" aria-hidden="true">${svg(portal.icon)}</span>
           <b>${portal.title}</b>
           <small>${portal.text}</small>
           ${portal.count !== "" ? `<em>${portal.count} catatan</em>` : ""}
@@ -70,7 +71,7 @@ export function homeHTML(view) {
         <p>Setiap dunia punya ingatan. Di sinilah ingatan Velmor disimpan — tokoh, kerajaan, makhluk, relik, dan peristiwa yang membentuk sejarahnya.</p>
         <div class="actions">
           <a class="btn primary" href="#/jelajah">Buka Arsip</a>
-          <a class="btn" href="#/acak">✧ Entri Acak</a>
+          <a class="btn" href="#/acak">${svg("shuffle", "ico-sm")}<span>Entri Acak</span></a>
           ${isAdmin ? `<button class="btn" data-action="add">+ Tambah Entri</button>` : ""}
         </div>
       </div>
