@@ -8,7 +8,8 @@ import { esc, normalizeText } from "../js/utils.js";
 import { renderMarkup, plainText, linkedNames } from "../js/markup.js";
 import { articleHTML } from "../js/views/article.js";
 import { sidebarHTML } from "../js/views/common.js";
-import { formFieldsHTML } from "../js/views/admin.js";
+import { formFieldsHTML } from "../js/views/form.js";
+import { commentsHTML } from "../js/views/comments.js";
 import { timelineHTML } from "../js/views/pages.js";
 
 const CATS = ["Karakter", "Kerajaan", "Lokasi", "Makhluk", "Lainnya"];
@@ -111,10 +112,48 @@ test("articleHTML meng-escape isi dan hanya menampilkan bagian yang terisi", () 
   assert.ok(!html.includes("data-del"));
 });
 
-test("articleHTML: tombol admin & riwayat hanya untuk admin", () => {
-  const html = articleHTML({ id: "1", nama: "A", kategori: "Karakter" }, { ...ctx, isAdmin: true });
+test("articleHTML: owner melihat hapus & riwayat", () => {
+  const html = articleHTML({ id: "1", nama: "A", kategori: "Karakter" }, { ...ctx, isAdmin: true, isOwner: true });
   assert.ok(html.includes('data-del="1"'));
   assert.ok(html.includes('data-action="history"'));
+});
+
+test("articleHTML: moderator hanya melihat edit, bukan hapus & riwayat", () => {
+  const html = articleHTML({ id: "1", nama: "A", kategori: "Karakter" }, { ...ctx, isAdmin: true, isOwner: false });
+  assert.ok(html.includes('data-edit="1"'));
+  assert.ok(!html.includes('data-del="1"'));
+  assert.ok(!html.includes('data-action="history"'));
+});
+
+test("articleHTML: anonim tidak melihat tombol staf", () => {
+  const html = articleHTML({ id: "1", nama: "A", kategori: "Karakter" }, { ...ctx, isAdmin: false });
+  assert.ok(!html.includes('data-edit="1"'));
+});
+
+test("commentsHTML: balasan hanya satu tingkat & teks di-escape", () => {
+  const html = commentsHTML({
+    entryId: "1",
+    uid: "u1",
+    canWrite: true,
+    canModerate: false,
+    list: [
+      { id: "c1", parentId: "", teks: "<b>x</b>", uid: "u2", nama: "Pembaca Anonim", peran: "reader", dibuatPada: "2026-01-01T00:00:00Z" },
+      { id: "c2", parentId: "c1", teks: "balas", uid: "u1", nama: "Saya", peran: "reader", dibuatPada: "2026-01-02T00:00:00Z" }
+    ]
+  });
+  assert.ok(html.includes("&lt;b&gt;x&lt;/b&gt;"));
+  assert.ok(!html.includes("<b>x</b>"));
+  assert.ok(html.includes('data-parent="c1"'));
+  assert.ok(html.includes('data-action="comment-del" data-id="c2"'));
+  assert.ok(!html.includes('data-action="comment-del" data-id="c1"'));
+});
+
+test("commentsHTML: badge peran ditampilkan untuk moderator & owner", () => {
+  const html = commentsHTML({
+    entryId: "1", uid: "", canWrite: false, canModerate: true,
+    list: [{ id: "c1", parentId: "", teks: "t", uid: "x", nama: "Mod", peran: "moderator", dibuatPada: "2026-01-01T00:00:00Z" }]
+  });
+  assert.ok(html.includes("role-moderator"));
 });
 
 test("sidebarHTML mengelompokkan per kategori", () => {
