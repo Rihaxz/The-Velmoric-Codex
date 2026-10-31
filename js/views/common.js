@@ -3,17 +3,22 @@
    Semua teks dari database WAJIB lewat esc().
 ========================================================= */
 
-import { CATEGORY_ICONS, THREAT_LEVELS } from "../schema.js";
+import { THREAT_LEVELS } from "../schema.js";
 import { plainText } from "../markup.js";
 import { imageTag } from "../media.js";
 import { esc } from "../utils.js";
+import { categoryIcon, svg } from "../icons.js";
+
+/** Deretan tengkorak sesuai tingkat ancaman (1-5). */
+export const skulls = level => svg("skull", "ico-sm skull").repeat(Number(level) || 0);
 
 export const entryHref = id => `#/e/${encodeURIComponent(id)}`;
 
 export const PAGE_SIZE = 24;
 
+/** Ikon SVG untuk kategori (dipakai di kartu, chip, dan infobox). */
 export function icon(category) {
-  return CATEGORY_ICONS[category] || CATEGORY_ICONS.Lainnya;
+  return categoryIcon(category);
 }
 
 export function snippet(text, length = 140) {
@@ -23,48 +28,54 @@ export function snippet(text, length = 140) {
 
 export function avatarHTML(entry) {
   if (entry.foto) return imageTag(entry.foto, entry.nama);
-  return `<span class="avatar-icon" aria-hidden="true">${esc(entry.avatar || icon(entry.kategori))}</span>`;
+  return `<span class="avatar-icon" aria-hidden="true">${categoryIcon(entry.kategori)}</span>`;
 }
 
 export function threatBadge(level) {
   const item = THREAT_LEVELS.find(threat => threat.value === String(level));
   if (!item) return "";
-  return `<span class="threat threat-${item.value}" title="Tingkat ancaman">${"☠".repeat(Number(item.value))} ${esc(item.label)}</span>`;
+  return `<span class="threat threat-${item.value}" title="Tingkat ancaman">${skulls(item.value)} ${esc(item.label)}</span>`;
 }
 
 export function draftBadge(entry) {
   return entry._draft ? `<span class="badge draft">Draf</span>` : "";
 }
 
-export function adminButtons(entry, extraClass = "") {
+/**
+ * Tombol aksi staf pada kartu/artikel.
+ * Moderator: Edit. Owner: Edit + Hapus (hapus hanya untuk entri terbit).
+ */
+export function adminButtons(entry, extraClass = "", { isOwner = false } = {}) {
   return `
-    <button class="btn ${extraClass}" data-edit="${esc(entry.id)}">Edit</button>
-    <button class="btn danger ${extraClass}" data-del="${esc(entry.id)}">Hapus</button>`;
+    <button class="btn ${extraClass}" data-edit="${esc(entry.id)}">${svg("edit", "ico-sm")}<span>Edit</span></button>
+    ${isOwner || entry._draft
+      ? `<button class="btn danger ${extraClass}" data-del="${esc(entry.id)}">${svg("trash", "ico-sm")}<span>Hapus</span></button>`
+      : ""}`;
 }
 
-export function cardHTML(entry, { isAdmin = false, bookmarked = false } = {}) {
+export function cardHTML(entry, { isAdmin = false, isOwner = false, bookmarked = false, index = 0 } = {}) {
   const subtitle = entry.julukan || entry.gelar || entry.ras || "";
 
   return `
-    <article class="card" data-open="${esc(entry.id)}" tabindex="0">
+    <article class="card" data-open="${esc(entry.id)}" tabindex="0" style="--i:${index}">
       <div class="avatar">${avatarHTML(entry)}</div>
       <div class="card-content">
         <div class="card-meta">
           <span class="cat-label">${icon(entry.kategori)} ${esc(entry.kategori || "Lainnya")}</span>
           ${draftBadge(entry)}
-          ${bookmarked ? `<span class="badge" title="Ditandai">★</span>` : ""}
+          ${bookmarked ? `<span class="badge" title="Ditandai">${svg("star", "ico-sm")}</span>` : ""}
         </div>
         <h3>${esc(entry.nama)}</h3>
         ${subtitle ? `<small>${esc(subtitle)}</small>` : ""}
         ${entry.ancaman ? threatBadge(entry.ancaman) : ""}
         <p>${esc(snippet(entry.deskripsi) || "Belum ada deskripsi.")}</p>
-        ${isAdmin ? `<div class="card-actions">${adminButtons(entry, "small-btn")}</div>` : ""}
+        ${isAdmin ? `<div class="card-actions">${adminButtons(entry, "small-btn", { isOwner })}</div>` : ""}
       </div>
     </article>`;
 }
 
 /** Grid kartu dengan tombol "Muat lebih banyak". */
-export function cardGridHTML(list, { isAdmin, bookmarks = [], emptyText, limit = PAGE_SIZE }) {
+export function cardGridHTML(list, { isAdmin, isOwner = false, bookmarks = [], emptyText, limit = PAGE_SIZE }) {
   if (!list.length) return `<p class="empty">${emptyText}</p>`;
 
   const marks = new Set(bookmarks);
@@ -72,7 +83,7 @@ export function cardGridHTML(list, { isAdmin, bookmarks = [], emptyText, limit =
 
   return `
     <div class="card-grid">
-      ${shown.map(entry => cardHTML(entry, { isAdmin, bookmarked: marks.has(entry.id) })).join("")}
+      ${shown.map((entry, index) => cardHTML(entry, { isAdmin, isOwner, bookmarked: marks.has(entry.id), index })).join("")}
     </div>
     ${list.length > limit ? `
       <div class="load-more">
