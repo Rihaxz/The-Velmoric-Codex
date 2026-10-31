@@ -6,6 +6,9 @@
    lalu disimpan di Firestore koleksi `media`, sehingga tetap
    gratis di paket Spark (tanpa Firebase Storage).
    Entri menyimpan referensi "media:<id>" atau URL biasa.
+
+   Optimasi: gambar Firestore hanya diambil saat mendekati
+   area layar (lazy load via IntersectionObserver).
 ========================================================= */
 
 import { resolveImage, saveMedia } from "./storage.js";
@@ -14,32 +17,49 @@ import { esc } from "./utils.js";
 const MAX_SIDE = 1600;
 // Panjang data URL maksimum; dokumen Firestore dibatasi 1 MiB.
 const MAX_CHARS = 950_000;
+const PLACEHOLDER = "data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==";
 
 /** HTML <img> untuk URL maupun referensi media. */
 export function imageTag(ref, alt = "", attrs = "") {
   const text = String(ref || "");
 
   if (text.startsWith("media:")) {
-    return `<img data-media="${esc(text)}" alt="${esc(alt)}" ${attrs}
-              src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==">`;
+    return `<img data-media="${esc(text)}" alt="${esc(alt)}" decoding="async" ${attrs} src="${PLACEHOLDER}">`;
   }
 
-  return `<img src="${esc(text)}" alt="${esc(alt)}" loading="lazy" ${attrs}
+  return `<img src="${esc(text)}" alt="${esc(alt)}" loading="lazy" decoding="async" ${attrs}
             onerror="this.style.display='none'">`;
 }
 
-/** Isi semua <img data-media> di dalam `root` (dipanggil setelah render). */
+function loadImage(img) {
+  const ref = img.dataset.media;
+  if (!ref) return;
+
+  img.removeAttribute("data-media");
+
+  resolveImage(ref)
+    .then(url => {
+      if (url) img.src = url;
+      else img.style.display = "none";
+    })
+    .catch(() => (img.style.display = "none"));
+}
+
+const observer = typeof IntersectionObserver === "function"
+  ? new IntersectionObserver(entries => {
+      for (const entry of entries) {
+        if (!entry.isIntersecting) continue;
+        observer.unobserve(entry.target);
+        loadImage(entry.target);
+      }
+    }, { rootMargin: "240px" })
+  : null;
+
+/** Isi <img data-media> di dalam `root` saat terlihat (atau langsung bila tidak didukung). */
 export function hydrateImages(root = document) {
   for (const img of root.querySelectorAll("img[data-media]")) {
-    const ref = img.dataset.media;
-    img.removeAttribute("data-media");
-
-    resolveImage(ref)
-      .then(url => {
-        if (url) img.src = url;
-        else img.style.display = "none";
-      })
-      .catch(() => (img.style.display = "none"));
+    if (observer) observer.observe(img);
+    else loadImage(img);
   }
 }
 
@@ -93,7 +113,7 @@ export async function compressImage(file, maxSide = MAX_SIDE) {
   throw new Error("Gambar terlalu besar walau sudah dikompres.");
 }
 
-/** Kompres + simpan. Mengembalikan referensi "media:<id>". */
+/** Kompres + simpan. Mengembalikan referensi "media:<id>". Hanya staf. */
 export async function uploadImage(file, options) {
   const compressed = await compressImage(file, options?.maxSide);
   return saveMedia(compressed);
