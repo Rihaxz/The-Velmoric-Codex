@@ -5,6 +5,7 @@
 import { THREAT_LEVELS } from "../schema.js";
 import { imageTag } from "../media.js";
 import { esc } from "../utils.js";
+import { svg } from "../icons.js";
 import {
   avatarHTML, cardGridHTML, entryHref, formatYear, icon, miniCard, pageHeader, snippet, threatBadge
 } from "./common.js";
@@ -56,7 +57,7 @@ export function timelineHTML({ items, isAdmin, loading, eraFilter, eras }) {
       </div>` : `
       <p class="empty">${loading ? "Membuka kronik…" : "Belum ada entri bertahun. Isi field <b>Tahun</b> dan <b>Era</b> pada entri (terutama kategori Peristiwa) agar muncul di sini."}</p>`}
 
-    ${isAdmin ? `<p class="muted admin-hint">Tip admin: tahun negatif berarti sebelum penanggalan (ditampilkan sebagai “SE”).</p>` : ""}`;
+    ${isAdmin ? `<p class="muted admin-hint">Tip staf: tahun negatif berarti sebelum penanggalan (ditampilkan sebagai “SE”).</p>` : ""}`;
 }
 
 // =========================================================
@@ -74,7 +75,7 @@ export function bestiaryHTML({ list, threat, habitat, habitats, isAdmin, bookmar
       <button class="threat-step${!threat ? " active" : ""}" data-threat="">Semua <span>${list.all.length}</span></button>
       ${THREAT_LEVELS.map(level => `
         <button class="threat-step t${level.value}${threat === level.value ? " active" : ""}" data-threat="${level.value}">
-          ${"☠".repeat(Number(level.value))} ${level.label} <span>${counts.get(level.value)}</span>
+          ${svg("skull", "ico-sm skull").repeat(Number(level.value))} ${level.label} <span>${counts.get(level.value)}</span>
         </button>`).join("")}
     </div>
 
@@ -121,14 +122,14 @@ export function savedHTML({ bookmarks, recent }) {
 // PETA DUNIA
 // =========================================================
 
-export function mapHTML({ image, markers, placeable, isAdmin, editing, selectedId, focusId, loading }) {
+export function mapHTML({ image, markers, placeable, isAdmin, isOwner = false, editing, selectedId, focusId, loading }) {
   return `
     ${pageHeader("ATLAS", "Peta Dunia Velmor", "Klik penanda untuk membuka catatan lokasi.")}
 
     ${isAdmin ? `
       <div class="map-admin">
         <button class="btn${editing ? " primary" : ""}" data-action="map-edit">${editing ? "Selesai Mengedit" : "Edit Penanda"}</button>
-        <label class="btn">Ganti Gambar Peta<input type="file" accept="image/*" data-upload="map" hidden></label>
+        ${isOwner ? `<label class="btn">Ganti Gambar Peta<input type="file" accept="image/*" data-upload="map" hidden></label>` : ""}
         ${editing ? `
           <label class="filter inline">
             <span>Tempatkan</span>
