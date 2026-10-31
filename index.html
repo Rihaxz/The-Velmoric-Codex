@@ -25,23 +25,18 @@
     <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600;700;800&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 
     <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/features.css">
 
     <link rel="modulepreload" href="js/firebase.js">
 </head>
 
 <body>
 
-<script>
-    /* Terapkan tema tersimpan sebelum halaman tampil (mencegah kedipan). */
-    try {
-        var saved = JSON.parse(localStorage.getItem("velmoric:settings:v1") || "{}");
-        if (saved.theme === "light") document.body.classList.add("light-mode");
-    } catch (e) {}
-</script>
-
 <header class="topbar">
 
-    <button class="btn mobile-menu" id="menuBtn" aria-label="Buka menu">☰</button>
+    <button class="btn icon-btn mobile-menu" id="menuBtn" aria-label="Buka menu" aria-expanded="false" aria-controls="sidebar">
+        <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+    </button>
 
     <button class="brand" id="brandBtn">
 
@@ -66,33 +61,45 @@
 
     <div class="top-actions">
 
-        <button class="btn" id="btnLogout" hidden>
-            Logout
-        </button>
+        <span class="role-label" id="roleLabel" hidden></span>
 
-        <button class="btn primary" id="btnAdd" hidden>
-            + Tambah
-        </button>
+        <a class="btn" id="btnProfile" href="#/profil" hidden>Profil</a>
+
+        <button class="btn" id="btnLogout" hidden>Logout</button>
+
+        <button class="btn primary" id="btnAdd" hidden>+ Tambah</button>
 
     </div>
 
 </header>
 
+<div class="sidebar-backdrop" id="sidebarBackdrop"></div>
+
 <div class="layout">
 
     <aside class="sidebar" id="sidebar">
 
-        <p class="side-heading">NAVIGASI</p>
+        <div class="sidebar-head">
+            <p class="side-heading">NAVIGASI</p>
+            <button class="btn icon-btn sidebar-toggle" id="sidebarToggle" aria-label="Lipat atau buka sidebar" aria-expanded="true" aria-controls="sidebar">
+                <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16"/></svg>
+            </button>
+        </div>
 
         <nav class="side-nav" aria-label="Navigasi utama">
-            <a class="side-link" data-nav="home" href="#/">◈ Beranda</a>
-            <a class="side-link" data-nav="jelajah" href="#/jelajah">⌕ Jelajah</a>
-            <a class="side-link" data-nav="linimasa" href="#/linimasa">⌛ Linimasa</a>
-            <a class="side-link" data-nav="peta" href="#/peta">⌖ Peta Dunia</a>
-            <a class="side-link" data-nav="bestiari" href="#/bestiari">☠ Bestiari</a>
-            <a class="side-link" data-nav="tersimpan" href="#/tersimpan">★ Tersimpan</a>
-            <a class="side-link" data-nav="acak" href="#/acak">✧ Entri Acak</a>
-            <a class="side-link" data-nav="admin" href="#/admin" hidden>⚙ Panel Admin</a>
+            <a class="side-link" data-nav="home" href="#/"><span class="nav-ico" aria-hidden="true"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z"/></svg></span>Beranda</a>
+            <a class="side-link" data-nav="jelajah" href="#/jelajah"><span class="nav-ico" aria-hidden="true"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg></span>Jelajah</a>
+            <a class="side-link" data-nav="linimasa" href="#/linimasa"><span class="nav-ico" aria-hidden="true"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></span>Linimasa</a>
+            <a class="side-link" data-nav="peta" href="#/peta"><span class="nav-ico" aria-hidden="true"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3L3 5v16l6-2 6 2 6-2V3l-6 2z"/></svg></span>Peta Dunia</a>
+            <a class="side-link" data-nav="bestiari" href="#/bestiari"><span class="nav-ico" aria-hidden="true"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/></svg></span>Bestiari</a>
+            <a class="side-link" data-nav="tersimpan" href="#/tersimpan"><span class="nav-ico" aria-hidden="true"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M6 3h12v18l-6-4-6 4z"/></svg></span>Tersimpan</a>
+            <a class="side-link" data-nav="acak" href="#/acak"><span class="nav-ico" aria-hidden="true"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M16 3h5v5M4 20L21 3M21 16v5h-5M15 15l6 6M4 4l5 5"/></svg></span>Entri Acak</a>
+
+            <div class="side-staff" id="navSection" hidden>
+                <a class="side-link" data-nav="moderator" href="#/moderator" hidden><span class="nav-ico" aria-hidden="true"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/></svg></span>Panel Moderator</a>
+                <a class="side-link" data-nav="owner" href="#/owner" hidden><span class="nav-ico" aria-hidden="true"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M3 8l4 4 5-7 5 7 4-4-2 11H5z"/></svg></span>Panel Owner</a>
+                <a class="side-link" data-nav="profil" href="#/profil" hidden><span class="nav-ico" aria-hidden="true"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-7 8-7s8 3 8 7"/></svg></span>Profil Saya</a>
+            </div>
         </nav>
 
         <p class="side-heading">ARSIP DUNIA</p>
@@ -101,7 +108,7 @@
 
         <p class="side-heading">INFORMASI</p>
 
-        <p style="padding:10px;color:var(--muted);font-size:11px;line-height:1.8">
+        <p class="side-info">
             The Velmoric Codex
             <br>
             A record of another world.
@@ -110,12 +117,16 @@
     </aside>
 
     <main id="main">
-        <p>Memuat Codex...</p>
+        <div class="skeleton" aria-hidden="true">
+            <div class="sk-line sk-title"></div>
+            <div class="sk-line sk-sub"></div>
+            <div class="sk-block"></div>
+        </div>
     </main>
 
 </div>
 
-<!-- FORM KARAKTER -->
+<!-- FORM ENTRI (staf: tambah/edit; anonim: usulan) -->
 
 <div class="modal-overlay" id="overlay">
 
@@ -127,7 +138,7 @@
 
         <form id="charForm">
 
-            <!-- Field dibuat otomatis dari js/schema.js -->
+            <!-- Field dibuat otomatis dari js/views/form.js -->
             <div class="form-grid" id="formFields"></div>
 
             <div class="modal-actions">
@@ -152,7 +163,7 @@
 
 </div>
 
-<!-- LOGIN ADMIN -->
+<!-- LOGIN STAF -->
 
 <div class="modal-overlay" id="loginOverlay">
 
@@ -160,17 +171,17 @@
 
         <button class="modal-close" id="closeLogin" aria-label="Tutup">×</button>
 
-        <h2>Administrator Access</h2>
+        <h2>Akses Staf</h2>
 
-        <p style="color:var(--muted);font-size:13px;margin-bottom:20px">
-            Khusus administrator. Pembaca tidak perlu login;
+        <p class="muted" style="font-size:13px;margin-bottom:20px">
+            Khusus moderator dan owner. Pembaca tidak perlu login;
             kamu otomatis masuk sebagai pembaca anonim.
         </p>
 
         <form id="loginForm">
 
             <div class="field">
-                <label>Email Administrator</label>
+                <label for="loginEmail">Email</label>
                 <input
                     id="loginEmail"
                     type="email"
@@ -180,7 +191,7 @@
             </div>
 
             <div class="field">
-                <label>Password</label>
+                <label for="loginPassword">Password</label>
                 <input
                     id="loginPassword"
                     type="password"
@@ -205,47 +216,7 @@
 
 </div>
 
-<!-- PENGATURAN ADMIN -->
-
-<div class="modal-overlay" id="adminSettingsModal">
-
-    <div class="modal">
-
-        <button class="modal-close" id="closeSettings" aria-label="Tutup">×</button>
-
-        <h2>Website Configuration</h2>
-
-        <div class="field">
-            <label>Tema Website</label>
-
-            <label style="display:flex;gap:10px;align-items:center">
-                <input type="checkbox" id="toggleTheme" style="width:auto">
-                Gunakan tema terang
-            </label>
-        </div>
-
-        <div class="field">
-            <label>Playlist Musik</label>
-
-            <textarea
-                id="inputMusicUrl"
-                placeholder="Masukkan URL audio, satu URL per baris"
-            ></textarea>
-        </div>
-
-        <div class="modal-actions">
-
-            <button class="btn" id="btnSaveSettings">
-                Simpan Pengaturan
-            </button>
-
-        </div>
-
-    </div>
-
-</div>
-
-<!-- RIWAYAT REVISI -->
+<!-- RIWAYAT REVISI (owner) -->
 
 <div class="modal-overlay" id="historyModal">
 
@@ -288,7 +259,7 @@
 
 <div id="appStatus" class="toast status" role="status" aria-live="polite" hidden></div>
 
-<!-- PEMUTAR MUSIK -->
+<!-- PEMUTAR MUSIK (hanya terlihat untuk moderator & owner) -->
 
 <audio id="bgMusic" preload="metadata"></audio>
 
@@ -298,14 +269,22 @@
 
     <div class="player-controls">
 
-        <button type="button" class="player-btn" id="btnPrevTrack" aria-label="Lagu sebelumnya">⏮</button>
-
-        <button type="button" class="player-btn" id="btnPlayPause" aria-label="Putar atau jeda">
-            <span id="iconPlay">▶</span>
-            <span id="iconPause" hidden>⏸</span>
+        <button type="button" class="player-btn" id="btnPrevTrack" aria-label="Lagu sebelumnya">
+            <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="M19 20L9 12l10-8zM5 19V5"/></svg>
         </button>
 
-        <button type="button" class="player-btn" id="btnNextTrack" aria-label="Lagu berikutnya">⏭</button>
+        <button type="button" class="player-btn" id="btnPlayPause" aria-label="Putar atau jeda">
+            <svg class="ico" id="iconPlay" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 4l13 8-13 8z"/></svg>
+            <svg class="ico" id="iconPause" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" hidden><path d="M6 4h4v16H6zM14 4h4v16h-4z"/></svg>
+        </button>
+
+        <button type="button" class="player-btn" id="btnNextTrack" aria-label="Lagu berikutnya">
+            <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="M5 4l10 8-10 8zM19 5v14"/></svg>
+        </button>
+
+        <button type="button" class="player-btn player-stop" id="btnStopTrack" aria-label="Matikan musik">
+            <svg class="ico" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M6 6h12v12H6z"/></svg>
+        </button>
 
     </div>
 
@@ -319,7 +298,7 @@
 
 </div>
 
-<!-- BACKUP -->
+<!-- BACKUP (owner) -->
 
 <input
     type="file"
