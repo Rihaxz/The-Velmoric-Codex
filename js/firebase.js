@@ -15,7 +15,10 @@ import {
   onAuthStateChanged,
   signInAnonymously,
   signInWithEmailAndPassword,
-  signOut
+  signOut,
+  updatePassword,
+  reauthenticateWithCredential,
+  EmailAuthProvider
 } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js";
 
 import {
@@ -37,18 +40,19 @@ import {
   limit
 } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js";
 
-const firebaseConfig = {
+export const firebaseConfig = Object.freeze({
   apiKey: "AIzaSyBb4xpWkV2sSARxKGS5UuRJwu8bG-qlkig",
   authDomain: "login-5ab48.firebaseapp.com",
   projectId: "login-5ab48",
   storageBucket: "login-5ab48.firebasestorage.app",
   messagingSenderId: "770076903708",
   appId: "1:770076903708:web:d493b3660094c084f892d9"
-};
+});
 
 const app = initializeApp(firebaseConfig);
 
 export const auth = getAuth(app);
+
 // Cache offline: arsip tetap bisa dibaca tanpa internet setelah pernah
 // dibuka. Jika IndexedDB tidak tersedia, SDK otomatis memakai memori.
 export const db = initializeFirestore(app, {
@@ -60,6 +64,9 @@ export {
   signInAnonymously,
   signInWithEmailAndPassword,
   signOut,
+  updatePassword,
+  reauthenticateWithCredential,
+  EmailAuthProvider,
   collection,
   doc,
   getDoc,
