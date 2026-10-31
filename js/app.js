@@ -4,15 +4,17 @@
 
    Alamat halaman (bisa dibagikan, tombol Back berfungsi):
      #/                   beranda
-     #/e/<id>             artikel entri
+     #/e/<id>             artikel entri (+ komentar)
      #/jelajah?q=&k=...   pencarian & filter lanjutan
      #/linimasa?era=      linimasa dunia
      #/peta?fokus=<id>    peta dunia
      #/bestiari?t=&h=     bestiari (ancaman, habitat)
      #/tersimpan          bookmark + riwayat baca
      #/acak               buka entri acak
-     #/admin              panel admin (khusus admin)
-     #admin               membuka form login admin (link rahasia)
+     #/moderator          panel moderator (moderator & owner)
+     #/owner              panel owner (khusus owner)
+     #/profil             profil akun staf
+     #admin               membuka form login staf (link rahasia)
 ========================================================= */
 
 import * as Auth from "./auth.js";
@@ -22,21 +24,28 @@ import { parseYear } from "./schema.js";
 import { hydrateImages, imageTag } from "./media.js";
 import { backlinksOf, familyTree, groupedRelations } from "./relations.js";
 import { bindEditor, buildForm, isDirty, openForm } from "./editor.js";
-import { applySettings, bindAdmin, loadActivity } from "./admin.js";
+import { applySettings, bindOwnerInput, reloadStaff } from "./owner.js";
+import { loadActivity, loadModerationData } from "./moderator.js";
+import { bindPanels, loadCommentsFor } from "./panels.js";
+import { setControlsAllowed } from "./music-player.js";
 import { afterMapRender, bindMap, mapView } from "./map.js";
 import { exploreHTML, homeHTML } from "./views/home.js";
 import { articleHTML, notFoundHTML } from "./views/article.js";
 import { bestiaryHTML, mapHTML, savedHTML, timelineHTML } from "./views/pages.js";
-import { adminHTML } from "./views/admin.js";
-import { PAGE_SIZE, entryHref, sidebarHTML } from "./views/common.js";
+import { moderatorSectionsHTML } from "./views/moderator.js";
+import { ownerSectionsHTML } from "./views/owner.js";
+import { profileHTML } from "./views/account.js";
+import { cardGridHTML, chipsHTML, entryHref, PAGE_SIZE, sidebarHTML, pageHeader } from "./views/common.js";
+import { svg } from "./icons.js";
 import {
-  friendlyError, go, hide, modals, render, replaceHash, setRenderer, setStatus, show, state, topModal
+  friendlyError, go, hide, modals, render, replaceHash, setRenderer, setRole, setStatus, show, state, topModal
 } from "./ui.js";
 import { $, collator, debounce } from "./utils.js";
 
 const el = {
   main: $("main"),
   sidebar: $("sidebar"),
+  backdrop: $("sidebarBackdrop"),
   charList: $("charList"),
   search: $("search"),
   loginOverlay: $("loginOverlay"),
@@ -45,6 +54,7 @@ const el = {
 
 const BASE_TITLE = "The Velmoric Codex";
 const EXPLORE_KEYS = ["q", "k", "ras", "status", "era", "tag", "threat", "sort"];
+const STAFF_ROUTES = new Set(["moderator", "owner", "profil"]);
 
 // =========================================================
 // ROUTING
@@ -66,7 +76,10 @@ function parseRoute(hash) {
     "/bestiari": "bestiari",
     "/tersimpan": "tersimpan",
     "/acak": "acak",
-    "/admin": "admin"
+    "/moderator": "moderator",
+    "/admin": "moderator", // tautan lama
+    "/owner": "owner",
+    "/profil": "profil"
   }[path] || "home";
 
   return { name, id: null, params };
@@ -94,11 +107,24 @@ function setParams(changes, path = location.hash.split("?")[0] || "#/") {
 
 let pendingLogin = false;
 let previousPath = "";
+let animateNext = false;
+
+/** Beranda setelah login: owner ke panel owner, moderator ke panel moderator. */
+function staffHome() {
+  return state.isOwner ? "#/owner" : "#/moderator";
+}
+
+/** Batasi rute staf: tamu dikembalikan ke beranda. */
+function allowedRoute(route) {
+  if (route.name === "owner") return state.isOwner;
+  if (route.name === "moderator" || route.name === "profil") return state.isAdmin;
+  return true;
+}
 
 function handleRoute({ keepScroll = false } = {}) {
   const route = parseRoute(location.hash);
 
-  // Link rahasia #admin: buka login (atau panel jika sudah admin).
+  // Link rahasia #admin: buka login (atau panel jika sudah staf).
   if (route.name === "login") {
     pendingLogin = true;
     replaceHash("#/");
@@ -110,21 +136,22 @@ function handleRoute({ keepScroll = false } = {}) {
 
   if (route.name === "acak") return openRandom();
 
-  if (route.name === "admin" && !state.isAdmin && Auth.getState().role !== Auth.ROLE.NONE) {
+  if (!allowedRoute(route) && Auth.getState().role !== Auth.ROLE.NONE) {
     replaceHash("#/");
     state.route = parseRoute("#/");
   } else {
     state.route = route;
   }
 
-  // Halaman baru: reset paginasi & mode peta.
+  // Halaman baru: reset paginasi, mode peta, dan animasi masuk.
   const path = `${state.route.name}:${state.route.id || ""}`;
   if (path !== previousPath) {
     state.limit = PAGE_SIZE;
     if (state.route.name !== "peta") state.map.editing = false;
-    if (state.route.name === "admin" && state.isAdmin) loadActivity();
     previousPath = path;
     keepScroll = false;
+    animateNext = true;
+    onEnterRoute();
   }
 
   if (state.route.name === "jelajah") {
@@ -133,9 +160,25 @@ function handleRoute({ keepScroll = false } = {}) {
     state.query = q;
   }
 
-  el.sidebar.classList.remove("open");
+  setSidebarOpen(false);
   render();
   if (!keepScroll) window.scrollTo(0, 0);
+}
+
+/** Muat data yang dibutuhkan halaman yang baru dibuka. */
+function onEnterRoute() {
+  const { name, id } = state.route;
+
+  if (name === "article" && id && state.comments.entryId !== id) loadCommentsFor(id);
+  if (name === "moderator" && state.isAdmin) {
+    loadModerationData();
+    loadActivity();
+  }
+  if (name === "owner" && state.isOwner) {
+    reloadStaff();
+    loadModerationData();
+    loadActivity();
+  }
 }
 
 function openRandom() {
@@ -163,13 +206,33 @@ function processPendingLogin() {
 
   const { role, error } = Auth.getState();
 
-  // Tunggu sesi Firebase siap (sesi admin lama bisa dipulihkan).
+  // Tunggu sesi Firebase siap (sesi staf lama bisa dipulihkan).
   if (role === Auth.ROLE.NONE && !error) return;
 
   pendingLogin = false;
 
-  if (state.isAdmin) go("#/admin");
+  if (state.isAdmin) go(staffHome());
   else openLogin();
+}
+
+// =========================================================
+// SIDEBAR (animasi buka/tutup)
+// =========================================================
+
+/** Mode ponsel: panel geser dari kiri dengan latar gelap. */
+function setSidebarOpen(open) {
+  el.sidebar.classList.toggle("open", open);
+  el.backdrop.classList.toggle("show", open);
+  $("menuBtn").setAttribute("aria-expanded", String(open));
+}
+
+/** Mode desktop: sidebar bisa dilipat, pilihannya diingat. */
+function toggleSidebarCollapsed() {
+  const collapsed = !document.body.classList.contains("sidebar-collapsed");
+
+  document.body.classList.toggle("sidebar-collapsed", collapsed);
+  $("sidebarToggle").setAttribute("aria-expanded", String(!collapsed));
+  Library.setPref("sidebarCollapsed", collapsed);
 }
 
 // =========================================================
@@ -219,11 +282,18 @@ function sortList(list, sort) {
 function common() {
   return {
     isAdmin: state.isAdmin,
+    isOwner: state.isOwner,
     loading: state.loading,
     bookmarks: Library.getBookmarks(),
     limit: state.limit,
     categories: Store.getCategories(state.settings)
   };
+}
+
+/** Peran pembaca saat ini untuk keperluan komentar. */
+function commenterContext() {
+  const { role, user } = Auth.getState();
+  return { uid: user?.uid || "", canWrite: role !== Auth.ROLE.NONE && Boolean(user) };
 }
 
 // =========================================================
@@ -237,17 +307,33 @@ function renderAll() {
 }
 
 function renderChrome() {
-  const { isAdmin, route } = state;
+  const { route, role, profile } = state;
+  const staff = state.isAdmin;
+  const signedIn = role !== Auth.ROLE.NONE;
 
-  $("btnLogout").hidden = !isAdmin;
-  $("btnAdd").hidden = !isAdmin;
+  $("btnLogout").hidden = !staff;
+  $("btnProfile").hidden = !staff;
+  $("btnAdd").hidden = !signedIn;
+  $("btnAdd").textContent = staff ? "+ Tambah" : "Usulkan Entri";
+
+  $("navSection").hidden = !staff;
 
   for (const link of document.querySelectorAll("[data-nav]")) {
-    if (link.dataset.nav === "admin") link.hidden = !isAdmin;
-    link.classList.toggle("active", link.dataset.nav === route.name);
+    const name = link.dataset.nav;
+
+    if (name === "moderator") link.hidden = !staff;
+    else if (name === "owner") link.hidden = !state.isOwner;
+    else if (name === "profil") link.hidden = !staff;
+
+    link.classList.toggle("active", name === route.name);
   }
 
   document.body.classList.toggle("reading-mode", route.name === "article" && state.prefs.readingMode);
+  document.body.dataset.role = role;
+
+  // Nama staf di header (hanya bila sudah login sebagai staf).
+  $("roleLabel").textContent = staff && profile ? `${profile.nama || "Staf"} · ${state.isOwner ? "Owner" : "Moderator"}` : "";
+  $("roleLabel").hidden = !staff;
 }
 
 function renderSidebar() {
@@ -273,14 +359,25 @@ function renderMain() {
       if (entry) {
         Library.addRecent(entry.id);
         title = `${entry.nama} — ${BASE_TITLE}`;
+
+        const commentsState = state.comments.entryId === entry.id ? state.comments : { list: null };
+        const who = commenterContext();
+
         html = articleHTML(entry, {
           isAdmin: state.isAdmin,
+          isOwner: state.isOwner,
           bookmarked: Library.isBookmarked(entry.id),
           reading: state.prefs.readingMode,
           resolve: name => Store.findByName(name),
           relations: groupedRelations(entry),
           tree: familyTree(entry),
-          backlinks: backlinksOf(entry)
+          backlinks: backlinksOf(entry),
+          comments: {
+            list: commentsState.list,
+            uid: who.uid,
+            canWrite: who.canWrite,
+            canModerate: state.isAdmin
+          }
         });
       } else {
         html = notFoundHTML(state.loading);
@@ -317,15 +414,17 @@ function renderMain() {
       break;
     }
 
-    case "linimasa":
+    case "linimasa": {
+      const items = Store.timelineEntries();
       title = `Linimasa — ${BASE_TITLE}`;
       html = timelineHTML({
         ...common(),
-        items: Store.timelineEntries(),
+        items,
         eraFilter: params.get("era") || "",
-        eras: [...new Set(Store.timelineEntries().map(item => item.entry.era).filter(Boolean))]
+        eras: [...new Set(items.map(item => item.entry.era).filter(Boolean))]
       });
       break;
+    }
 
     case "peta":
       title = `Peta Dunia — ${BASE_TITLE}`;
@@ -359,48 +458,116 @@ function renderMain() {
       });
       break;
 
-    case "admin":
-      if (state.isAdmin) {
-        title = `Panel Admin — ${BASE_TITLE}`;
-        html = adminHTML({
-          ...common(),
-          list: Store.queryEntries({ category: state.category }),
-          total: Store.getEntries().length,
-          published: Store.getPublished().length,
-          drafts: Store.getDrafts(),
-          counts: Store.countByCategory(),
-          category: state.category,
-          extraCategories: state.settings.kategoriTambahan,
-          needsWork: Store.getEntries()
-            .map(entry => ({
-              entry,
-              missing: [!entry.foto && "gambar", !entry.deskripsi && "deskripsi"].filter(Boolean)
-            }))
-            .filter(item => item.missing.length),
-          activity: state.activity
-        });
+    case "moderator":
+    case "owner":
+      if (!allowedRoute(route)) {
+        html = homeHTML(homeView());
         break;
       }
-    // bukan admin: jatuh ke beranda
+
+      title = `${route.name === "owner" ? "Panel Owner" : "Panel Moderator"} — ${BASE_TITLE}`;
+      html = staffPageHTML(route.name);
+      break;
+
+    case "profil":
+      if (state.isAdmin) {
+        title = `Profil — ${BASE_TITLE}`;
+        html = profileHTML(state.profile);
+        break;
+      }
+    // bukan staf: jatuh ke beranda
     // eslint-disable-next-line no-fallthrough
     default:
-      html = homeHTML({
-        ...common(),
-        total: Store.getEntries().length,
-        counts: Store.countByCategory(),
-        lore: loreOfTheDay(),
-        recent: recentEntries().slice(0, 6).map(item => item.entry),
-        latest: latestEntries(),
-        category: state.category,
-        list: Store.queryEntries({ category: state.category })
-      });
+      html = homeHTML(homeView());
   }
 
   document.title = title;
   el.main.innerHTML = html;
   hydrateImages(el.main);
 
+  if (animateNext) {
+    animateNext = false;
+    el.main.classList.remove("view-enter");
+    void el.main.offsetWidth; // mulai ulang animasi
+    el.main.classList.add("view-enter");
+  }
+
   if (route.name === "peta") afterMapRender();
+}
+
+function homeView() {
+  return {
+    ...common(),
+    total: Store.getEntries().length,
+    counts: Store.countByCategory(),
+    lore: loreOfTheDay(),
+    recent: recentEntries().slice(0, 6).map(item => item.entry),
+    latest: latestEntries(),
+    category: state.category,
+    list: Store.queryEntries({ category: state.category })
+  };
+}
+
+/** Panel staf: moderator & owner memakai bagian yang sama; owner menambah bagiannya. */
+function staffPageHTML(name) {
+  const drafts = Store.getDrafts();
+  const list = Store.queryEntries({ category: state.category });
+  const counts = Store.countByCategory();
+  const nameOf = id => Store.getEntry(id)?.nama || "";
+
+  const hero = name === "owner"
+    ? pageHeader("OWNER", "Panel Owner", "Kendali penuh atas arsip, moderator, dan pengaturan situs.")
+    : pageHeader("MODERATOR", "Panel Moderator", "Tinjau usulan anonim, moderasi komentar, dan rapikan arsip.");
+
+  const actions = `
+    <div class="actions panel-actions">
+      <button class="btn primary" data-action="add">${svg("plus", "ico-sm")}<span>Tambah Entri</span></button>
+      ${state.isOwner ? `<a class="btn" href="#/${name === "owner" ? "moderator" : "owner"}">${svg("shield", "ico-sm")}<span>${name === "owner" ? "Buka Panel Moderator" : "Buka Panel Owner"}</span></a>` : ""}
+      <a class="btn" href="#/profil">${svg("user", "ico-sm")}<span>Profil Saya</span></a>
+    </div>`;
+
+  const ownerPart = name === "owner"
+    ? ownerSectionsHTML({
+        staff: state.staff,
+        settings: state.settings,
+        categories: Store.getCategories(state.settings).filter(item => !state.settings.kategoriTambahan.includes(item)),
+        currentUid: currentUid()
+      })
+    : "";
+
+  const modPart = moderatorSectionsHTML({
+    submissions: state.moderation.submissions,
+    comments: state.moderation.comments,
+    drafts,
+    counts,
+    needsWork: Store.getEntries()
+      .map(entry => ({ entry, missing: [!entry.foto && "gambar", !entry.deskripsi && "deskripsi"].filter(Boolean) }))
+      .filter(item => item.missing.length),
+    activity: state.activity,
+    nameOf,
+    published: Store.getPublished().length,
+    total: Store.getEntries().length
+  });
+
+  return `
+    ${hero}
+    ${actions}
+    ${ownerPart}
+    ${modPart}
+
+    <h2 class="archive-heading">Manajemen Arsip <small>${list.length} entri</small></h2>
+    ${chipsHTML(counts, state.category, Store.getEntries().length, Store.getCategories(state.settings))}
+    ${cardGridHTML(list, {
+      isAdmin: true,
+      isOwner: state.isOwner,
+      bookmarks: Library.getBookmarks(),
+      limit: state.limit,
+      emptyText: Store.getEntries().length ? "Tidak ada entri yang cocok." : "Belum ada arsip. Tambahkan entri pertama."
+    })}`;
+}
+
+function currentUid() {
+  return Auth.getState().user?.uid || "";
 }
 
 setRenderer(renderAll);
@@ -413,6 +580,12 @@ async function removeEntry(id) {
   if (!state.isAdmin) return;
 
   const target = Store.getEntry(id);
+
+  // Menghapus entri terbit hanya untuk owner; draf boleh dihapus moderator.
+  if (!target?._draft && !state.isOwner) {
+    return setStatus("Hanya owner yang bisa menghapus entri yang sudah terbit.", true);
+  }
+
   if (!confirm(`Hapus "${target?.nama || "entri ini"}"? Versi terakhirnya tetap tersimpan di riwayat revisi.`)) return;
 
   try {
@@ -469,11 +642,11 @@ function showLightbox(index) {
 }
 
 // =========================================================
-// LOGIN / LOGOUT ADMIN
+// LOGIN / LOGOUT STAF
 // =========================================================
 
 const LOGIN_ERRORS = {
-  "not-admin": "Akun ini valid, tetapi tidak memiliki hak administrator.",
+  "not-admin": "Akun ini valid, tetapi tidak memiliki hak moderator atau owner.",
   "auth/invalid-credential": "Email atau password salah.",
   "auth/wrong-password": "Email atau password salah.",
   "auth/user-not-found": "Email atau password salah.",
@@ -501,14 +674,14 @@ async function submitLogin(event) {
   $("loginError").textContent = "";
 
   try {
-    await Auth.loginAdmin($("loginEmail").value.trim(), $("loginPassword").value);
+    await Auth.loginStaff($("loginEmail").value.trim(), $("loginPassword").value);
 
     $("loginForm").reset();
     hide(el.loginOverlay);
-    setStatus("Login admin berhasil.");
-    go("#/admin");
+    setStatus("Masuk berhasil.");
+    go(staffHome());
   } catch (error) {
-    console.error("Login admin gagal:", error);
+    console.error("Login staf gagal:", error);
     $("loginError").textContent = LOGIN_ERRORS[error?.code] || "Login gagal. Periksa email dan password.";
     $("loginPassword").value = "";
   } finally {
@@ -520,7 +693,7 @@ async function logout() {
   if (!state.isAdmin) return;
 
   try {
-    await Auth.logoutAdmin();
+    await Auth.logoutStaff();
     go("#/");
   } catch (error) {
     console.error("Logout gagal:", error);
@@ -552,36 +725,42 @@ async function loadAll() {
 }
 
 function onAuthChange(auth) {
-  const wasAdmin = state.isAdmin;
-  state.isAdmin = auth.role === Auth.ROLE.ADMIN;
+  const previousRole = state.role;
 
-  // Tutup semua UI admin begitu bukan admin lagi.
-  if (!state.isAdmin) {
-    for (const id of ["overlay", "adminSettingsModal", "historyModal"]) hide($(id), { force: true });
+  setRole(auth.role, auth.profile);
+  setControlsAllowed(state.isAdmin);
 
-    if (state.route.name === "admin" && auth.role !== Auth.ROLE.NONE) {
-      replaceHash("#/");
-      state.route = parseRoute("#/");
-    }
-  }
+  // Tutup jendela yang hanya boleh dibuka staf begitu peran berubah.
+  if (!state.isOwner) hide($("historyModal"), { force: true });
+
+  // Form menampilkan tombol unggah hanya untuk staf.
+  if (previousRole !== auth.role) buildForm();
 
   if (auth.role === Auth.ROLE.NONE && auth.error) {
     state.loading = false;
     setStatus(
-      "Gagal masuk sebagai pembaca anonim. Aktifkan provider Anonymous di Firebase Authentication dan tambahkan domain situs ke Authorized domains.",
+      auth.error === "auth/profile-failed"
+        ? "Peran akunmu tidak bisa diperiksa. Periksa koneksi lalu muat ulang halaman."
+        : "Gagal masuk sebagai pembaca anonim. Aktifkan provider Anonymous di Firebase Authentication dan tambahkan domain situs ke Authorized domains.",
       true
     );
+  }
+
+  // Rute staf yang tidak lagi berhak dikembalikan ke beranda.
+  if (!allowedRoute(state.route) && auth.role !== Auth.ROLE.NONE) {
+    replaceHash("#/");
+    state.route = parseRoute("#/");
   }
 
   render();
   processPendingLogin();
 
   // Muat data saat pertama kali ada sesi, dan saat peran berubah
-  // (admin juga memuat draf).
+  // (staf juga memuat draf).
   if (auth.role !== Auth.ROLE.NONE && auth.role !== state.lastRole) {
     state.lastRole = auth.role;
     loadAll();
-    if (state.isAdmin && !wasAdmin && state.route.name === "admin") loadActivity();
+    if (state.route.name === "moderator" || state.route.name === "owner") onEnterRoute();
   }
 }
 
@@ -601,7 +780,6 @@ function bindEvents() {
 
   el.search.addEventListener("input", event => {
     state.query = event.target.value.trim();
-    renderSidebar();
     runSearch();
   });
 
@@ -619,7 +797,10 @@ function bindEvents() {
     go("#/");
   });
 
-  $("menuBtn").addEventListener("click", () => el.sidebar.classList.toggle("open"));
+  $("menuBtn").addEventListener("click", () => setSidebarOpen(!el.sidebar.classList.contains("open")));
+  el.backdrop.addEventListener("click", () => setSidebarOpen(false));
+  $("sidebarToggle").addEventListener("click", toggleSidebarCollapsed);
+
   $("btnAdd").addEventListener("click", () => openForm());
   $("btnLogout").addEventListener("click", logout);
 
@@ -639,7 +820,7 @@ function bindEvents() {
     });
   }
 
-  // Satu handler untuk semua elemen yang dirender ulang.
+  // Satu handler untuk elemen yang dirender ulang. Aksi staf ada di panels.js.
   document.addEventListener("click", event => {
     const spoiler = event.target.closest(".spoiler");
     if (spoiler) return spoiler.classList.toggle("revealed");
@@ -714,10 +895,10 @@ function bindEvents() {
 
   document.addEventListener("keydown", event => {
     if (event.key === "Escape") {
-      // Tutup modal paling atas saja.
+      // Tutup modal paling atas saja; bila tidak ada, tutup sidebar mobile.
       const top = topModal();
       if (top) hide(top);
-      else el.sidebar.classList.remove("open");
+      else setSidebarOpen(false);
       return;
     }
 
@@ -762,6 +943,12 @@ function registerServiceWorker() {
 }
 
 function init() {
+  // Preferensi sidebar dipulihkan sebelum halaman pertama tampil.
+  if (state.prefs.sidebarCollapsed) {
+    document.body.classList.add("sidebar-collapsed");
+    $("sidebarToggle").setAttribute("aria-expanded", "false");
+  }
+
   buildForm();
   applySettings(state.settings);
 
@@ -770,7 +957,8 @@ function init() {
 
   bindEvents();
   bindEditor();
-  bindAdmin();
+  bindOwnerInput();
+  bindPanels();
   bindMap();
   handleRoute();
 
@@ -780,4 +968,3 @@ function init() {
 }
 
 init();
-
