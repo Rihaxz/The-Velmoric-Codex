@@ -1,13 +1,18 @@
 /* =========================================================
    THE VELMORIC CODEX — editor.js
-   Form tambah/edit entri: field per kategori, toolbar format,
-   relasi, galeri, upload gambar, draf/terbit.
+   Form entri. Dua mode:
+
+     STAF (moderator/owner): tambah, edit, simpan draf, terbitkan.
+     ANONIM (pembaca)      : hanya mengirim USULAN baru. Usulan
+                             masuk antrean dan wajib disetujui
+                             moderator sebelum menjadi draf.
 ========================================================= */
 
 import * as Store from "./storage.js";
+import { submitSubmission } from "./community.js";
 import { isImageRef } from "./schema.js";
 import { hydrateImages, imageTag, uploadImage } from "./media.js";
-import { formFieldsHTML, galleryRowHTML, relationRowHTML } from "./views/admin.js";
+import { formFieldsHTML, galleryRowHTML, relationRowHTML } from "./views/form.js";
 import { entryHref } from "./views/common.js";
 import { friendlyError, go, guardClose, hide, onClose, setStatus, show, state } from "./ui.js";
 import { $, esc } from "./utils.js";
@@ -23,8 +28,9 @@ let snapshot = "";
 // SETUP
 // =========================================================
 
+/** Bangun ulang field form (dipanggil saat kategori atau peran berubah). */
 export function buildForm() {
-  $("formFields").innerHTML = formFieldsHTML(Store.getCategories(state.settings));
+  $("formFields").innerHTML = formFieldsHTML(Store.getCategories(state.settings), { isStaff: state.isAdmin });
 }
 
 function refreshDatalists() {
@@ -100,11 +106,33 @@ function updatePreview(ref) {
 }
 
 // =========================================================
+// MODE & TOMBOL
+// =========================================================
+
+/** Sesuaikan label tombol dengan peran dan kondisi entri. */
+function applyModeLabels(entry) {
+  const staff = state.isAdmin;
+
+  $("btnDraft").hidden = !staff;
+  $("btnPublish").hidden = false;
+
+  if (!staff) {
+    $("btnPublish").textContent = "Kirim Usulan";
+    return;
+  }
+
+  $("btnPublish").textContent = entry && !entry._draft ? "Simpan & Terbit" : "Terbitkan";
+  $("btnDraft").textContent = entry && !entry._draft ? "Tarik ke Draf" : "Simpan Draf";
+}
+
+// =========================================================
 // BUKA / SIMPAN
 // =========================================================
 
 export function openForm(id = null, preset = {}) {
-  if (!state.isAdmin) return;
+  // Anonim hanya boleh membuka form baru (usulan), bukan mengedit.
+  if (id && !state.isAdmin) return;
+  if (!state.isAdmin && state.role === "none") return;
 
   const entry = id ? Store.getEntry(id) : null;
   const select = form().elements.kategori;
@@ -119,9 +147,10 @@ export function openForm(id = null, preset = {}) {
   $("galleryUrl").value = "";
   refreshDatalists();
 
-  $("modalTitle").textContent = entry ? `Edit: ${entry.nama}` : "Tambah Entri";
-  $("btnPublish").textContent = entry && !entry._draft ? "Simpan & Terbit" : "Terbitkan";
-  $("btnDraft").textContent = entry && !entry._draft ? "Tarik ke Draf" : "Simpan Draf";
+  $("modalTitle").textContent = entry
+    ? `Edit: ${entry.nama}`
+    : state.isAdmin ? "Tambah Entri" : "Usulkan Entri Baru";
+  applyModeLabels(entry);
 
   const values = entry || preset;
 
@@ -151,8 +180,6 @@ export function openForm(id = null, preset = {}) {
 }
 
 async function submit(draft) {
-  if (!state.isAdmin) return;
-
   const data = collect();
   const unknown = data.relasi.filter(rel => !rel.id);
 
@@ -170,15 +197,23 @@ async function submit(draft) {
   buttons.forEach(button => (button.disabled = true));
 
   try {
+    // Anonim: kirim sebagai usulan, tidak menyentuh arsip.
+    if (!state.isAdmin) {
+      await submitSubmission(data);
+      hide(overlay(), { force: true });
+      setStatus("Usulan terkirim. Moderator akan meninjaunya sebelum menjadi draf.");
+      return;
+    }
+
     const saved = editingId
       ? await Store.updateEntry(editingId, data, { draft })
       : await Store.createEntry(data, { draft });
 
     hide(overlay(), { force: true });
-    setStatus(draft ? "Draf disimpan (hanya terlihat oleh admin)." : "Entri diterbitkan.");
+    setStatus(draft ? "Draf disimpan (hanya terlihat oleh staf)." : "Entri diterbitkan.");
     go(entryHref(saved.id));
   } catch (error) {
-    setStatus(friendlyError(error, "Gagal menyimpan entri."), true);
+    setStatus(friendlyError(error, state.isAdmin ? "Gagal menyimpan entri." : "Gagal mengirim usulan."), true);
   } finally {
     buttons.forEach(button => (button.disabled = false));
   }
@@ -219,13 +254,13 @@ function applyFormat(textarea, command) {
 }
 
 // =========================================================
-// UPLOAD
+// UPLOAD (hanya staf)
 // =========================================================
 
 async function handleUpload(input) {
   const files = [...input.files];
   input.value = "";
-  if (!files.length) return;
+  if (!files.length || !state.isAdmin) return;
 
   setStatus(files.length > 1 ? `Mengompres & mengunggah ${files.length} gambar…` : "Mengompres & mengunggah gambar…");
 
@@ -293,5 +328,3 @@ export function bindEditor() {
   $("closeModal").addEventListener("click", () => hide(overlay()));
   $("cancelBtn").addEventListener("click", () => hide(overlay()));
 }
-
-
