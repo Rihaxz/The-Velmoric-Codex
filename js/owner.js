@@ -10,6 +10,7 @@ import { setPlaylist } from "./music-player.js";
 import { buildForm } from "./editor.js";
 import { isHttpUrl } from "./schema.js";
 import { historyHTML } from "./views/owner.js";
+import { applyTheme, handleThemeAction, handleThemeForm } from "./theme.js";
 import { friendlyError, go, hide, render, setStatus, show, state } from "./ui.js";
 import { $, downloadJSON } from "./utils.js";
 
@@ -36,6 +37,7 @@ export function applySettings(settings) {
 
   state.settings = settings;
   setPlaylist(settings.musicUrls);
+  applyTheme();
 
   if (categoriesChanged) buildForm();
 }
@@ -256,7 +258,7 @@ export async function handleOwner(action, target) {
     case "owner-import": $("btnImport").click(); return true;
     case "owner-reload-staff": await reloadStaff(); return true;
     case "history": await openHistory(target.dataset.id); return true;
-    default: return false;
+    default: return handleThemeAction(action, target);
   }
 }
 
@@ -268,7 +270,7 @@ export async function handleOwnerForm(form) {
     case "create-mod": await addModerator(form); return true;
     case "music": await saveMusic(form); return true;
     case "category": await addCategory(form); return true;
-    default: return false;
+    default: return handleThemeForm(form);
   }
 }
 
