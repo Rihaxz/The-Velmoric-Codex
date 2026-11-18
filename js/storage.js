@@ -37,6 +37,7 @@ import {
 
 import { BASE_CATEGORIES, SEARCH_KEYS, isImageRef, parseYear, sanitizeEntry } from "./schema.js";
 import { plainText } from "./markup.js";
+import { normalizeThemes } from "./theme-core.js";
 import { collator, normalizeText, safeStorage } from "./utils.js";
 
 const C = Object.freeze({
@@ -471,7 +472,8 @@ export function normalizeSettings(source = {}) {
     musicUrls,
     musicUrl: musicUrls[0] || "", // kompatibilitas data lama
     kategoriTambahan: extraCategories,
-    petaGambar: isImageRef(input.petaGambar) ? String(input.petaGambar).trim() : ""
+    petaGambar: isImageRef(input.petaGambar) ? String(input.petaGambar).trim() : "",
+    temaKustom: normalizeThemes(input.temaKustom)
   };
 }
 
