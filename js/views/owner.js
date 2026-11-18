@@ -7,6 +7,7 @@
 import { esc } from "../utils.js";
 import { formatDate } from "./common.js";
 import { svg } from "../icons.js";
+import { themeStudioHTML } from "./theme.js";
 
 const ROLE_LABEL = { owner: "Owner", moderator: "Moderator" };
 
@@ -118,12 +119,17 @@ export function historyHTML(entry, revisions) {
 }
 
 /** Bagian owner-only di atas panel moderator. */
-export function ownerSectionsHTML({ staff, settings, categories, currentUid }) {
+export function ownerSectionsHTML({ staff, settings, categories, currentUid, themeDraft = null }) {
   return `
     <div class="panel-stack">
       <section class="panel wide">
         <h2>Kelola Moderator <small class="muted">Owner</small></h2>
         ${staffHTML(staff, currentUid)}
+      </section>
+
+      <section class="panel wide">
+        <h2>Studio Tema <small class="muted">Owner</small></h2>
+        ${themeStudioHTML(settings, themeDraft)}
       </section>
 
       <section class="panel">
