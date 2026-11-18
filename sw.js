@@ -5,13 +5,14 @@
    Data Firestore di-cache terpisah oleh SDK Firebase.
 ========================================================= */
 
-const CACHE = "velmoric-shell-v3";
+const CACHE = "velmoric-shell-v4";
 
 const SHELL = [
   "./",
   "index.html",
   "css/style.css",
   "css/features.css",
+  "css/luxe.css",
   "manifest.webmanifest",
   "icons/icon-192.png",
   "js/app.js"
