@@ -28,6 +28,9 @@ import { applySettings, bindOwnerInput, reloadStaff } from "./owner.js";
 import { loadActivity, loadModerationData } from "./moderator.js";
 import { bindPanels, loadCommentsFor } from "./panels.js";
 import { setControlsAllowed } from "./music-player.js";
+import { initSfx } from "./sfx.js";
+import { bindTheme, getThemeDraft } from "./theme.js";
+import { hideSplash, initMotion } from "./motion.js";
 import { afterMapRender, bindMap, mapView } from "./map.js";
 import { exploreHTML, homeHTML } from "./views/home.js";
 import { articleHTML, notFoundHTML } from "./views/article.js";
@@ -531,7 +534,8 @@ function staffPageHTML(name) {
         staff: state.staff,
         settings: state.settings,
         categories: Store.getCategories(state.settings).filter(item => !state.settings.kategoriTambahan.includes(item)),
-        currentUid: currentUid()
+        currentUid: currentUid(),
+        themeDraft: getThemeDraft()
       })
     : "";
 
@@ -722,6 +726,7 @@ async function loadAll() {
 
   state.loading = false;
   render();
+  hideSplash();
 }
 
 function onAuthChange(auth) {
@@ -738,6 +743,7 @@ function onAuthChange(auth) {
 
   if (auth.role === Auth.ROLE.NONE && auth.error) {
     state.loading = false;
+    hideSplash();
     setStatus(
       auth.error === "auth/profile-failed"
         ? "Peran akunmu tidak bisa diperiksa. Periksa koneksi lalu muat ulang halaman."
@@ -960,7 +966,13 @@ function init() {
   bindOwnerInput();
   bindPanels();
   bindMap();
+  bindTheme();
+  initSfx();
+  initMotion();
   handleRoute();
+
+  // Arsip dari cache sudah tampil: layar pembuka boleh ditutup.
+  if (!state.loading) hideSplash();
 
   Auth.onChange(onAuthChange);
   Auth.start();
